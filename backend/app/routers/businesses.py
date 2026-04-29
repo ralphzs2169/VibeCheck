@@ -11,6 +11,7 @@ from backend.app.schemas.business import (
     BusinessCreate,
     BusinessResponse,
     BusinessUpdate,
+    BusinessWithReviewsResponse
 )
 from backend.app.services.business_service import get_business_or_404
 
@@ -106,3 +107,22 @@ async def delete_business(business_id: int, db: Annotated[AsyncSession, Depends(
 
     await db.delete(business)
     await db.commit()
+
+
+# Get Specific Business with Reviews
+@router.get("/{business_id}/reviews", response_model=BusinessWithReviewsResponse)
+async def get_business_with_reviews(
+    business_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)]
+):
+    result = await db.execute(
+        select(Business).where(Business.id == business_id).options(selectinload(Business.reviews))
+    )
+    business = result.scalars().first()
+
+    if not business:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Business not found",
+        )
+    return business

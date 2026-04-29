@@ -16,10 +16,10 @@ class Review(Base):
     __tablename__ = "reviews"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    title: Mapped[str] = mapped_column(String(100), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    sentiment_score: Mapped[float] = mapped_column(nullable=False)
-    sentiment_label: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    sentiment_score: Mapped[float] = mapped_column(nullable=True)
+    sentiment_label: Mapped[str] = mapped_column(String(20), nullable=True)
     
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))

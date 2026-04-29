@@ -2,20 +2,25 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 class ReviewBase(BaseModel):
-    title: str = Field(..., max_length=100)
     content: str = Field(..., max_length=500)
-    sentiment_score: float = Field(..., ge=-1, le=1)
-    sentiment_label: str = Field(..., max_length=20)
 
 class ReviewCreate(ReviewBase):
-    pass
+    user_id: int = Field(..., gt=0) #modify later with actual user_id from auth
+    business_id: int = Field(..., gt=0)
 
 class ReviewUpdate(ReviewBase):
-    pass
+    content: str | None = Field(None, max_length=500)
 
 class ReviewResponse(ReviewBase):
     id: int
+
+    sentiment_score: float
+    sentiment_label: str 
+
     created_at: datetime
     updated_at: datetime
+
+    user_id: int
+    business_id: int
 
     model_config = ConfigDict(from_attributes=True)
