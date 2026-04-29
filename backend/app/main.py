@@ -1,9 +1,8 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
-from backend.routers import users
+from backend.app.routers import users
 from backend.app.core.database import engine, Base
-
 
 # Handle startup and shutdown events
 @asynccontextmanager

@@ -5,12 +5,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from backend.schemas.user import UserCreate, UserResponse, UserUpdate
+from backend.app.schemas.user import UserCreate, UserResponse, UserUpdate
 
 from backend.app.models.user import User
 from backend.app.core.database import get_db
 
-from backend.services.user_service import get_user_or_404
+from backend.app.services.user_service import get_user_or_404
 
 router = APIRouter()
 
