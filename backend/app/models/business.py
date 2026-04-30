@@ -10,6 +10,7 @@ from backend.app.core.database import Base
 
 if TYPE_CHECKING:
     from backend.app.models.user import Review
+    from backend.app.models.vibe_snapshot import VibeSnapshot
     
 class Business(Base):
     __tablename__ = "businesses"
@@ -33,5 +34,10 @@ class Business(Base):
     # Establish relationship with Review (reviews for the business)
     reviews: Mapped[list["Review"]] = relationship(
         "Review", back_populates="business", cascade="all, delete-orphan"
+    )
+
+    # Establish relationship with VibeSnapshot (vibe snapshots for the business)
+    vibe_snapshots: Mapped[list["VibeSnapshot"]] = relationship(
+        "VibeSnapshot", back_populates="business", cascade="all, delete-orphan"
     )
 
