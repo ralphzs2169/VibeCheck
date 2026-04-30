@@ -15,7 +15,7 @@ from backend.app.core.database import get_db
 from backend.app.services.review_service import get_review_or_404
 from backend.app.services.user_service import get_user_or_404
 from backend.app.services.business_service import get_business_or_404
-# from backend.app.services.sentiment_service import analyze_sentiment
+from backend.app.services.sentiment_service import analyze_sentiment
 
 router = APIRouter()
 
@@ -33,12 +33,12 @@ async def create_review(review: ReviewCreate, db: Annotated[AsyncSession, Depend
     existing_business = await get_business_or_404(db, review.business_id)
 
     # Analyze sentiment
-    # sentiment_result = analyze_sentiment(review.content)
+    sentiment_score, sentiment_label, _ = analyze_sentiment(review.content)
 
     new_review = Review(
         content=review.content,
-        sentiment_score=0.5,
-        sentiment_label=0.5,
+        sentiment_score=sentiment_score,
+        sentiment_label=sentiment_label,
 
         user_id=existing_user.id,
         business_id=existing_business.id,

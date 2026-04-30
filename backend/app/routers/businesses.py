@@ -7,13 +7,15 @@ from sqlalchemy.orm import selectinload
 
 from backend.app.core.database import get_db
 from backend.app.models.business import Business
+from backend.app.models.review import Review
 from backend.app.schemas.business import (
     BusinessCreate,
     BusinessResponse,
     BusinessUpdate,
-    BusinessWithReviewsResponse
+    BusinessWithReviewsResponse,
 )
 from backend.app.services.business_service import get_business_or_404
+from backend.app.services.vibe_service import compute_vibe_summary
 
 router = APIRouter()
 
@@ -126,3 +128,28 @@ async def get_business_with_reviews(
             detail="Business not found",
         )
     return business
+
+
+@router.get("/vibe/{business_id}")
+async def get_business_vibe(
+    business_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)]
+):
+    # fetch reviews safely
+    result = await db.execute(
+        select(Review.content)
+        .where(Review.business_id == business_id)
+    )
+
+    reviews = [row[0] for row in result.all()]
+
+    if len(reviews) == 0:
+        return {
+            "status": "no_reviews",
+            "message": "No reviews yet. Be the first to share your experience!"
+        }
+
+    # build vibe summary (fixed usage)
+    vibe_summary = await compute_vibe_summary(db, business_id)
+
+    return vibe_summary
