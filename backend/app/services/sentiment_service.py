@@ -24,3 +24,28 @@ def analyze_sentiment(text: str):
         polarity_score = 0.0
 
     return polarity_score, label, confidence
+
+
+
+def analyze_sentiment_batch(texts: list[str]):
+    results = sentiment_pipeline(texts, truncation=True, max_length=512)
+
+    outputs = []
+
+    for r in results:
+        raw_label = r["label"]
+        confidence = float(r["score"])
+
+        if raw_label == "NEGATIVE":
+            label = "negative"
+            polarity_score = -confidence
+        elif raw_label == "POSITIVE":
+            label = "positive"
+            polarity_score = confidence
+        else:
+            label = "neutral"
+            polarity_score = 0.0
+
+        outputs.append((polarity_score, label, confidence))
+
+    return outputs

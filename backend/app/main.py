@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
-from backend.app.routers import users, businesses, reviews
+from backend.app.routers import users, businesses, reviews, analytics
 from backend.app.core.database import engine, Base
 
 # Handle startup and shutdown events
@@ -18,8 +18,9 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 app.include_router(users.router, prefix="/api/users", tags=["users"])
-app.include_router(reviews.router, prefix="/api/reviews", tags=["reviews"])
+app.include_router(reviews.router, prefix="/api/reviews", tags=["reviews"]) 
 app.include_router(businesses.router, prefix="/api/businesses", tags=["businesses"])
+app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
 
 @app.get("/")
 async def root():

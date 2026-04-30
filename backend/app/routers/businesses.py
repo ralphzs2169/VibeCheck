@@ -15,6 +15,9 @@ from backend.app.schemas.business import (
 )
 from backend.app.schemas.vibe_snapshot import VibeSnapshotResponse
 
+from backend.app.services.analytics_service import AnalyticsService
+from backend.app.services.vibe_service import compute_vibe_summary
+
 router = APIRouter()
 
 
@@ -86,3 +89,28 @@ async def get_business_vibe_snapshots(
     business_id: int, db: Annotated[AsyncSession, Depends(get_db)]
 ) -> list[VibeSnapshot]:
     return await business_service.get_vibe_snapshots(db, business_id)
+
+
+@router.get("/{business_id}/dashboard")
+async def get_dashboard(
+    business_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    return {
+        "vibe": await compute_vibe_summary(db, business_id),
+        "distribution": await AnalyticsService.get_sentiment_distribution(
+            db, business_id
+        ),
+        "trend": await AnalyticsService.get_sentiment_trend_slope(
+            db, business_id
+        ),
+        "volatility": await AnalyticsService.get_sentiment_volatility(
+            db, business_id
+        ),
+        "peak_drop": await AnalyticsService.get_peak_and_drop(
+            db, business_id
+        ),
+        "temporal": await AnalyticsService.get_temporal_aggregation(
+            db, business_id, "monthly"
+        ),
+    }

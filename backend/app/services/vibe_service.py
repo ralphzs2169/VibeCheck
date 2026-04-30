@@ -163,6 +163,7 @@ async def compute_vibe_summary(db: AsyncSession, business_id: int) -> dict:
     return {
         "business_id": business_id,
         "avg_score": round(avg_score, 4),
+        "vibe_score": convert_sentiment_to_vibe_score(avg_score),
         "vibe_label": label,
         "keywords": keywords,
         "positive_keywords": positive_keywords,
