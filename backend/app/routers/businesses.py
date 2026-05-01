@@ -118,4 +118,14 @@ async def get_dashboard(
         "temporal": await AnalyticsService.get_temporal_aggregation(
             db, business_id, "monthly"
         ),
+        "aspects": await AnalyticsService.get_business_aspect_summary(
+            db, business_id
+        )
     }
+
+# @router.get("/{business_id}/absa")
+# async def get_business_aspects(
+#     business_id: int,
+#     db: AsyncSession = Depends(get_db)
+# ):
+#     return await AnalyticsService.get_business_aspect_summary(db, business_id)

@@ -2,6 +2,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.review import Review
+from backend.app.models.aspect_sentiment import AspectSentiment
 from sklearn.linear_model import LinearRegression
 import numpy as np
 
@@ -195,3 +196,43 @@ class AnalyticsService:
             "forecast_score": float(prediction),
             "predicted_vibe": label
         }
+    
+
+    @staticmethod
+    async def get_business_aspect_summary(
+        db: AsyncSession,
+        business_id: int
+    ):
+        stmt = (
+            select(
+                AspectSentiment.aspect,
+                func.avg(AspectSentiment.sentiment_score).label("avg_score"),
+                func.count(AspectSentiment.id).label("count"),
+            )
+            .join(Review, AspectSentiment.review_id == Review.id)
+            .where(Review.business_id == business_id)
+            .group_by(AspectSentiment.aspect)
+        )
+
+        result = await db.execute(stmt)
+        rows = result.all()
+
+        if not rows:
+            return {}
+
+        summary = {}
+
+        for row in rows:
+            avg = float(row.avg_score)
+
+            summary[row.aspect] = {
+                "avg_score": avg,
+                "count": int(row.count),
+                "label": (
+                    "positive" if avg > 0.2
+                    else "negative" if avg < -0.2
+                    else "neutral"
+                )
+            }
+
+        return summary

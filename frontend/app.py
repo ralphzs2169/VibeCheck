@@ -39,6 +39,7 @@ trend = dashboard["trend"]
 volatility = dashboard["volatility"]
 peak_drop = dashboard["peak_drop"]
 temporal = dashboard["temporal"]
+aspects = dashboard.get("aspects", {})
 
 
 # -----------------------------
@@ -156,3 +157,99 @@ st.write(
     f"Mixed: {vibe['score_distribution']['mixed']} | "
     f"Negative: {vibe['score_distribution']['negative']}"
 )
+
+
+# -----------------------------
+# ASPECT ANALYTICS
+# -----------------------------
+def convert_score_to_label(score: float) -> str:
+    if score >= 0.3:
+        return "Strong 👍"
+    elif score >= 0.05:
+        return "Good 🙂"
+    elif score > -0.05:
+        return "Neutral 😐"
+    elif score > -0.3:
+        return "Needs Improvement ⚠️"
+    else:
+        return "Critical 🔴"
+    
+# -----------------------------
+# ASPECT ANALYTICS (MERCHANT VIEW)
+# -----------------------------
+st.subheader("🍽️ Aspect Insights (Merchant View)")
+
+aspects = dashboard.get("aspects", {})
+
+if aspects:
+
+    df_aspects = pd.DataFrame.from_dict(aspects, orient="index")
+    df_aspects = df_aspects.reset_index().rename(columns={"index": "aspect"})
+
+    # convert score → business-friendly label
+    df_aspects["status"] = df_aspects["avg_score"].apply(convert_score_to_label)
+
+    # -----------------------------
+    # Layout (2 columns)
+    # -----------------------------
+    col1, col2 = st.columns(2)
+
+    # -----------------------------
+    # 1. Aspect Health Overview (LABELS instead of scores)
+    # -----------------------------
+    with col1:
+        st.markdown("### 📊 Aspect Health")
+
+        fig, ax = plt.subplots()
+
+        colors = df_aspects["avg_score"].apply(
+            lambda x: "green" if x > 0.2 else "orange" if x > -0.2 else "red"
+        )
+
+        ax.bar(df_aspects["aspect"], df_aspects["avg_score"], color=colors)
+        ax.axhline(0, color="black", linewidth=0.8)
+        ax.set_ylabel("Sentiment Direction (Internal Only)")
+        ax.set_xlabel("Aspect")
+
+        st.pyplot(fig)
+
+    # -----------------------------
+    # 2. Mention Frequency (IMPORTANT FOR MERCHANTS)
+    # -----------------------------
+    with col2:
+        st.markdown("### 📦 What Customers Talk About Most")
+
+        fig2, ax2 = plt.subplots()
+        ax2.bar(df_aspects["aspect"], df_aspects["count"])
+        ax2.set_ylabel("Mentions")
+        ax2.set_xlabel("Aspect")
+
+        st.pyplot(fig2)
+
+    # -----------------------------
+    # 3. Merchant-Friendly Table
+    # -----------------------------
+    st.markdown("### 🧠 Summary (What You Should Focus On)")
+
+    display_df = df_aspects[["aspect", "status", "count"]].copy()
+
+    display_df = display_df.sort_values("count", ascending=False)
+
+    st.dataframe(display_df, use_container_width=True)
+
+    # -----------------------------
+    # 4. Key Insight (MOST IMPORTANT FOR MERCHANTS)
+    # -----------------------------
+    worst = df_aspects.sort_values("avg_score").iloc[0]
+    best = df_aspects.sort_values("avg_score", ascending=False).iloc[0]
+
+    st.error(
+        f"⚠️ Needs Attention: {worst['aspect'].upper()} → {worst['status']}"
+    )
+
+    st.success(
+        f"✅ Strongest Area: {best['aspect'].upper()} → {best['status']}"
+    )
+
+else:
+    st.info("No aspect analytics available.")
