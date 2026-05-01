@@ -3,10 +3,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import backend.app.services.review_service as review_service
 from backend.app.core.database import get_db
 from backend.app.models.review import Review
 from backend.app.schemas.review import ReviewCreate, ReviewResponse, ReviewUpdate
-import backend.app.services.review_service as review_service
 
 router = APIRouter()
 

@@ -3,9 +3,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import backend.app.services.user_service as user_service
 from backend.app.core.database import get_db
 from backend.app.schemas.user import UserCreate, UserResponse, UserUpdate
-import backend.app.services.user_service as user_service
 
 router = APIRouter()
 

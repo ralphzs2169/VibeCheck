@@ -24,3 +24,5 @@ async def create_vibe_snapshot(db: AsyncSession, business_id: int):
     await db.refresh(snapshot)
 
     return snapshot
+
+

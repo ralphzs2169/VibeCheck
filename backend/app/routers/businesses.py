@@ -91,6 +91,11 @@ async def get_business_vibe_snapshots(
     return await business_service.get_vibe_snapshots(db, business_id)
 
 
+
+# -------------------------
+# BUSINESS ANALYTICS ROUTES
+# -------------------------
+@router.get("/{business_id}/analytics")
 @router.get("/{business_id}/dashboard")
 async def get_dashboard(
     business_id: int,

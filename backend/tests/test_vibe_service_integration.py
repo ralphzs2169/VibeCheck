@@ -1,6 +1,5 @@
 import pytest
 
-
 # 1. Insufficient data case (only 1 review)
 @pytest.mark.asyncio
 async def test_vibe_insufficient_data(client):

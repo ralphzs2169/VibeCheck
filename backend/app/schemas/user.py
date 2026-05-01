@@ -10,10 +10,12 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     pass
 
+
 class UserUpdate(BaseModel):
     username: str | None = Field(None, max_length=50)
     firstname: str | None = Field(None, max_length=20)
     lastname: str | None = Field(None, max_length=20)
+
 
 class UserResponse(UserBase):
     id: int

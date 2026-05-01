@@ -1,7 +1,5 @@
 import pytest
 
-
-# Test cases for User endpoints
 @pytest.mark.asyncio
 async def test_create_user(client):
     response = await client.post("/api/users", json={

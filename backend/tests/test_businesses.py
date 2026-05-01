@@ -1,8 +1,5 @@
 import pytest
 
-
-# Tests - BUSINESS
-
 @pytest.mark.asyncio
 async def test_create_business(client):
     response = await client.post("/api/businesses", json={

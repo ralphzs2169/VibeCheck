@@ -1,9 +1,9 @@
 # conftest.py - runs before all tests to ensure models are registered
-import pytest
+import pytest  # noqa: F401
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 
-import backend.app.models  # Import all models to register them with Base
+import backend.app.models  # Import all models to register them with Base  # noqa: F401
 from backend.app.main import app
 from backend.app.core.database import get_db, Base
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
