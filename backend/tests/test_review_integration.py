@@ -35,6 +35,8 @@ async def test_create_review_updates_vibe_flow():
             "Great place overall"
         ]
 
+        review_ids = []
+
         for text in reviews:
             res = await client.post("/api/reviews", json={
                 "content": text,
@@ -42,6 +44,7 @@ async def test_create_review_updates_vibe_flow():
                 "business_id": business_id
             })
             assert res.status_code == 201
+            review_ids.append(res.json()["id"])
 
         # 4. Check vibe snapshots were created
         snapshot_res = await client.get(
@@ -63,3 +66,14 @@ async def test_create_review_updates_vibe_flow():
         assert "vibe_label" in data
         assert "avg_score" in data
         assert "summary_text" in data
+
+
+         # 6. ABSA validation 
+        aspect_res = await client.get(f"/api/reviews/{review_ids[0]}/aspects")
+
+        assert aspect_res.status_code == 200
+        rows = aspect_res.json()
+
+        assert len(rows) > 0
+        assert any(r["aspect"] for r in rows)
+        assert any(r["sentiment_label"] in ["positive", "negative"] for r in rows)

@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
+from backend.app.services.absa_service import run_absa_for_review
 import backend.app.services.business_service as business_service
 import backend.app.services.user_service as user_service
 from backend.app.models.review import Review
@@ -25,10 +26,14 @@ async def create_review(db: AsyncSession, review) -> Review:
     )
 
     db.add(new_review)
+
+    await db.flush()  # ensures new_review.id is populated 
+
+    await run_absa_for_review(db, new_review)
+    await create_vibe_snapshot(db, review.business_id)
+
     await db.commit()
     await db.refresh(new_review)
-
-    await create_vibe_snapshot(db, review.business_id)
     
     return new_review
 

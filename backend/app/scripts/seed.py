@@ -9,11 +9,13 @@ from faker import Faker
 
 from backend.app.core.database import Base, engine
 from backend.app.services.sentiment_service import analyze_sentiment_batch
+from backend.app.services.absa_service import run_absa_for_review
 
 from ..core.database import AsyncSessionLocal
 from ..models.business import Business
 from ..models.review import Review
 from ..models.user import User
+
 
 fake = Faker()
 
@@ -161,9 +163,12 @@ async def seed() -> None:
         # Seed reviews 
         print("Seeding reviews...")
 
-        review_texts = []
+        review_objects = []
         review_meta = []
 
+        # -----------------------------
+        # Generate review inputs
+        # -----------------------------
         for i in range(120):
             business = random.choice(businesses)
 
@@ -172,14 +177,16 @@ async def seed() -> None:
 
             review_text = generate_review_with_drift(days_ago)
 
-            review_texts.append(review_text)
-            review_meta.append((business, created_at))
+            review_meta.append((review_text, business, created_at))
 
+        review_texts = [r[0] for r in review_meta]
+
+        # sentiment batch
         results = analyze_sentiment_batch(review_texts)
 
-        # Build Review objects using batch results
-        for (review_text, (business, created_at)), (score, label, _) in zip(
-            zip(review_texts, review_meta),
+        # Create review objects 
+        for (review_text, business, created_at), (score, label, _) in zip(
+            review_meta,
             results
         ):
             review = Review(
@@ -192,8 +199,21 @@ async def seed() -> None:
             )
 
             db.add(review)
+            review_objects.append(review)
 
         await db.commit()
+
+        # IMPORTANT: ensure IDs exist
+        for r in review_objects:
+            await db.refresh(r)
+
+        print("Running ABSA on seeded reviews...")
+
+        for review in review_objects:
+            await run_absa_for_review(db, review)
+
+        await db.commit()
+
         print("Database seeding complete!")
 
 

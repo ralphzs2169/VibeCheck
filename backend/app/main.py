@@ -22,6 +22,7 @@ app.include_router(reviews.router, prefix="/api/reviews", tags=["reviews"])
 app.include_router(businesses.router, prefix="/api/businesses", tags=["businesses"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
 
+
 @app.get("/")
 async def root():
-    return {"message": "Welcome to the Blog API!"}
+    return {"message": "Welcome to Mobile Legends!"}

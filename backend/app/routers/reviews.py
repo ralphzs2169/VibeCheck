@@ -6,7 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import backend.app.services.review_service as review_service
 from backend.app.core.database import get_db
 from backend.app.models.review import Review
+from backend.app.schemas.aspect_sentiment import AspectSentimentResponse
 from backend.app.schemas.review import ReviewCreate, ReviewResponse, ReviewUpdate
+from backend.app.services.absa_service import get_review_aspects
 
 router = APIRouter()
 
@@ -50,3 +52,11 @@ async def delete_review(
     review_id: int, db: Annotated[AsyncSession, Depends(get_db)]
 ) -> None:
     await review_service.delete_review(db, review_id)
+
+
+@router.get("/{review_id}/aspects",response_model=list[AspectSentimentResponse])
+async def get_review_aspects_route(
+    review_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)]
+):
+    return await get_review_aspects(db, review_id)

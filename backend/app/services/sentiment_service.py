@@ -26,7 +26,7 @@ def analyze_sentiment(text: str):
     return polarity_score, label, confidence
 
 
-
+# For seed data or batch processing, we can use a batch version of the sentiment analysis
 def analyze_sentiment_batch(texts: list[str]):
     results = sentiment_pipeline(texts, truncation=True, max_length=512)
 
