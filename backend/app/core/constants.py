@@ -1,3 +1,5 @@
+MINUTES_BETWEEN_SNAPSHOTS = 1 # for testing, set to 1 minute.
+
 # --------------------------
 # VIBE SUMMARY CONSTANTS
 # --------------------------
