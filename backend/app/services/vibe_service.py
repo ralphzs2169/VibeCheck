@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from keybert import KeyBERT
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,11 +19,21 @@ from backend.app.services.sentiment_service import analyze_sentiment
 keyword_model = KeyBERT()
 
 
-async def get_reviews_with_scores(db: AsyncSession, business_id: int) -> list[tuple]:
-    result = await db.execute(
+async def get_reviews_with_scores(
+    db: AsyncSession,
+    business_id: int,
+    as_of_date: datetime | None = None
+) -> list[tuple]:
+
+    stmt = (
         select(Review.content, Review.sentiment_score)
         .where(Review.business_id == business_id)
     )
+
+    if as_of_date is not None:
+        stmt = stmt.where(Review.created_at <= as_of_date)
+
+    result = await db.execute(stmt)
     return result.all()
 
 
@@ -118,10 +130,29 @@ def is_neutral(score: float) -> bool:
     return VIBE_NEUTRAL_LOW <= score <= VIBE_NEUTRAL_HIGH
 
 
-async def compute_vibe_summary(db: AsyncSession, business_id: int) -> dict:
-    reviews_with_scores = await get_reviews_with_scores(db, business_id)
+async def compute_vibe_summary(
+    db: AsyncSession,
+    business_id: int,
+    as_of_date: datetime.datetime | None = None,
+    minimum_review_count: int | None = None,
+    allow_insufficient_data: bool = False
+) -> dict:
+    
+    # Use default if not specified
+    if minimum_review_count is None:
+        minimum_review_count = MINIMUM_REVIEW_COUNT
+    
+    reviews_with_scores = await get_reviews_with_scores(db, business_id, as_of_date)
 
-    if len(reviews_with_scores) < MINIMUM_REVIEW_COUNT:
+    # Only block if minimum review count is required AND not allowing insufficient data
+    if not allow_insufficient_data and len(reviews_with_scores) < minimum_review_count:
+        return {
+            "status": "insufficient_data",
+            "business_id": business_id
+        }
+    
+    # If no reviews at all, return insufficient data even if allowing it
+    if len(reviews_with_scores) == 0:
         return {
             "status": "insufficient_data",
             "business_id": business_id

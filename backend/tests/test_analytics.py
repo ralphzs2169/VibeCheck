@@ -1,3 +1,5 @@
+import datetime
+
 import pytest
 from backend.app.services.analytics_service import AnalyticsService
 
@@ -27,6 +29,11 @@ class FakeResult:
 
     def __iter__(self):
         return iter(self._rows)
+    
+    def scalar_one_or_none(self):
+        if not self._rows:
+            return None
+        return self._rows[0]
 
 
 class FakeDB:
@@ -120,3 +127,61 @@ async def test_forecast():
 
     assert "forecast_score" in result
     assert "predicted_vibe" in result
+
+
+@pytest.mark.asyncio
+async def test_business_aspect_summary():
+
+    db = FakeDB([
+        FakeRow(aspect="service", avg_score=0.6, count=3),
+        FakeRow(aspect="food", avg_score=-0.3, count=2),
+        FakeRow(aspect="cleanliness", avg_score=0.1, count=5),
+    ])
+
+    result = await AnalyticsService.get_business_aspect_summary(db, 1)
+
+    assert "service" in result
+    assert result["service"]["label"] == "positive"
+
+    assert result["food"]["label"] == "negative"
+    assert result["cleanliness"]["label"] == "neutral"
+
+
+@pytest.mark.asyncio
+async def test_vibe_score_trend():
+    db = FakeDB([
+        FakeRow(snapshot_date=datetime.datetime(2026, 1, 1), vibe_score=0.1),
+        FakeRow(snapshot_date=datetime.datetime(2026, 1, 2), vibe_score=0.4),
+        FakeRow(snapshot_date=datetime.datetime(2026, 1, 3), vibe_score=0.8),
+    ])
+
+    result = await AnalyticsService.get_vibe_score_trend(db, 1)
+
+    assert result["trend"] == "improving"
+    assert result["slope"] > 0
+
+
+@pytest.mark.asyncio
+async def test_vibe_volatility():
+    db = FakeDB([
+        FakeRow(0.9),
+        FakeRow(0.85),
+        FakeRow(0.87),
+    ])
+
+    result = await AnalyticsService.get_vibe_volatility(db, 1)
+
+    assert "volatility" in result
+    assert result["stability"] in ["stable", "unstable"]
+
+
+@pytest.mark.asyncio
+async def test_latest_vibe():
+    db = FakeDB([
+        FakeRow(vibe_score=0.2, vibe_label="neutral", snapshot_date="2026-01-01")
+    ])
+
+    result = await AnalyticsService.get_latest_vibe(db, 1)
+
+    assert result["vibe_score"] == 0.2
+    assert result["vibe_label"] == "neutral"

@@ -6,8 +6,13 @@ from backend.app.models.aspect_sentiment import AspectSentiment
 from sklearn.linear_model import LinearRegression
 import numpy as np
 
+from backend.app.models.vibe_snapshot import VibeSnapshot
+
 class AnalyticsService:
 
+    # --------------------------
+    # SENTIMENT ANALYTICS
+    # --------------------------
     @staticmethod
     async def get_temporal_aggregation(
         db: AsyncSession,
@@ -198,6 +203,10 @@ class AnalyticsService:
         }
     
 
+    # --------------------------
+    # ABSA ANALYTICS
+    # --------------------------
+
     @staticmethod
     async def get_business_aspect_summary(
         db: AsyncSession,
@@ -236,3 +245,117 @@ class AnalyticsService:
             }
 
         return summary
+
+
+    # --------------------------
+    # VIBE-TREND ANALYTICS
+    # --------------------------
+
+    @staticmethod
+    async def get_vibe_score_over_time(db: AsyncSession, business_id: int):
+        stmt = (
+            select(
+                VibeSnapshot.snapshot_date,
+                VibeSnapshot.vibe_score
+            )
+            .where(VibeSnapshot.business_id == business_id)
+            .order_by(VibeSnapshot.snapshot_date)
+        )
+
+        result = await db.execute(stmt)
+        rows = result.all()
+
+        if not rows:
+            return {
+                "labels": [],
+                "scores": []
+            }
+
+        return {
+            "labels": [r.snapshot_date.isoformat() for r in rows],
+            "scores": [r.vibe_score for r in rows]
+        }
+
+
+    @staticmethod
+    async def get_vibe_score_trend(db: AsyncSession, business_id: int):
+
+        stmt = (
+            select(VibeSnapshot.snapshot_date, VibeSnapshot.vibe_score)
+            .where(VibeSnapshot.business_id == business_id)
+            .order_by(VibeSnapshot.snapshot_date)
+        )
+
+        result = await db.execute(stmt)
+        rows = result.all()
+
+        if len(rows) < 2:
+            return {"trend": "insufficient_data", "slope": 0}
+
+        base_date = rows[0].snapshot_date
+
+        x = np.array([
+            (r.snapshot_date - base_date).days
+            for r in rows
+        ])
+
+        y = np.array([r.vibe_score for r in rows])
+
+        slope = np.polyfit(x, y, 1)[0]
+
+        trend = (
+            "improving" if slope > 0.01
+            else "declining" if slope < -0.01
+            else "stable"
+        )
+
+        return {
+            "trend": trend,
+            "slope": float(slope)
+        }
+    
+
+    @staticmethod
+    async def get_vibe_volatility(db: AsyncSession, business_id: int):
+
+        stmt = select(VibeSnapshot.vibe_score).where(
+            VibeSnapshot.business_id == business_id
+        )
+
+        result = await db.execute(stmt)
+        rows = result.all()
+
+        scores = [r[0] for r in rows if r[0] is not None]
+
+        if len(scores) < 2:
+            return {"volatility": 0}
+
+        volatility = float(np.std(scores))
+
+        return {
+            "volatility": volatility,
+            "stability": "stable" if volatility < 0.2 else "unstable"
+        }
+
+
+    @staticmethod
+    async def get_latest_vibe(db: AsyncSession, business_id: int):
+
+        stmt = (
+            select(VibeSnapshot)
+            .where(VibeSnapshot.business_id == business_id)
+            .order_by(VibeSnapshot.snapshot_date.desc())
+            .limit(1)
+        )
+
+        result = await db.execute(stmt)
+        row = result.scalar_one_or_none()
+
+        if not row:
+            return {"status": "no_data"}
+
+        return {
+            "vibe_score": row.vibe_score,
+            "vibe_label": row.vibe_label,
+            "date": row.snapshot_date
+        }

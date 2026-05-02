@@ -129,3 +129,9 @@ async def get_vibe_snapshots(db: AsyncSession, business_id: int) -> list[VibeSna
     )
 
     return result.scalars().all()
+
+
+# -------------------------
+# BUSINESS ABSA SERVICES
+# -------------------------
+

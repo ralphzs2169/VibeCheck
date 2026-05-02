@@ -1,4 +1,6 @@
+import datetime
 import logging
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import select
 
@@ -17,10 +19,12 @@ async def run_vibe_snapshot_job():
     try:
         async with AsyncSessionLocal() as db:
             result = await db.execute(select(Business))
-            businesses = result.scalars().all()
 
+            businesses = result.scalars().all()
+            
+            now = datetime.datetime.now(datetime.timezone.utc)
             for business in businesses:
-                await create_vibe_snapshot(db, business.id)
+                await create_vibe_snapshot(db, business.id, now)
 
             await db.commit()
 

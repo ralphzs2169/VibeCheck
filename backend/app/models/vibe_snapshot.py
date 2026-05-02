@@ -16,11 +16,8 @@ class VibeSnapshot(Base):
     __tablename__ = "vibe_snapshots"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    business_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("businesses.id"), nullable=False
-    )
 
-    avg_score: Mapped[float] = mapped_column(Float, nullable=False)
+    vibe_score: Mapped[float] = mapped_column(Float, nullable=False)
     vibe_label: Mapped[str] = mapped_column(String, nullable=False)
 
     review_count: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -38,7 +35,17 @@ class VibeSnapshot(Base):
         onupdate=lambda: datetime.now(UTC),
     )
 
+    snapshot_date: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        index=True
+    )
+
+    business_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("businesses.id"), nullable=False, index=True
+    )
+
     # Establish relationship with Business (the business this vibe snapshot belongs to)
-    business: Mapped["Business"] = relationship("Business", back_populates="vibe_snapshots")
-
-
+    business: Mapped["Business"] = relationship(
+        "Business", back_populates="vibe_snapshots"
+    )

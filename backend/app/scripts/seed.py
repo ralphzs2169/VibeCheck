@@ -3,19 +3,20 @@
 
 import asyncio
 import random
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from faker import Faker
+from sqlalchemy import func, select
 
 from backend.app.core.database import Base, engine
-from backend.app.services.sentiment_service import analyze_sentiment_batch
 from backend.app.services.absa_service import run_absa_for_review
+from backend.app.services.sentiment_service import analyze_sentiment_batch
+from backend.app.services.vibe_snapshot_service import create_vibe_snapshot
 
 from ..core.database import AsyncSessionLocal
 from ..models.business import Business
 from ..models.review import Review
 from ..models.user import User
-
 
 fake = Faker()
 
@@ -48,6 +49,51 @@ NEGATIVE_ASPECTS = [
     "broken amenities",
     "unresponsive staff",
 ]
+
+# -----------------------------
+# Helper functions for seeding
+# -----------------------------
+
+
+async def get_first_review_date(db, business_id: int):
+    result = await db.execute(
+        select(func.min(Review.created_at))
+        .where(Review.business_id == business_id)
+    )
+    return result.scalar()
+
+
+async def backfill_vibe_snapshots(db, business_id: int):
+    first_date = await get_first_review_date(db, business_id)
+
+    if not first_date:
+        return
+
+    # Ensure first_date is timezone-aware in UTC for consistent snapshot creation
+    if first_date.tzinfo is None:
+        first_date = first_date.replace(tzinfo=timezone.utc)
+    else:
+        first_date = first_date.astimezone(timezone.utc)
+
+    today = datetime.now(timezone.utc)
+    current = first_date
+    snapshots_created = 0
+
+    # Backfill 1 snapshot per day from first review to today
+    # No minimum threshold - create snapshot every single day for consistent time-series data
+    while current <= today:
+        snapshot = await create_vibe_snapshot(
+            db,
+            business_id,
+            snapshot_date=current
+        )
+        if snapshot is not None:
+            snapshots_created += 1
+        current += timedelta(days=1)
+    
+    if snapshots_created > 0:
+        print(f"  Created {snapshots_created} snapshots for business {business_id}")
+
 
 
 
@@ -93,20 +139,27 @@ def generate_review_with_drift(days_ago: int) -> str:
 
 
 def generate_created_at_with_bias() -> datetime:
-    # Bias towards more recent dates to simulate real-world review patterns
+    # For seeding demo data, distribute reviews evenly across time
+    # instead of biasing heavily towards recent dates
+    # This ensures we get multiple snapshots per business for better analytics demo
+    
     weights = [
-        ("-2y", "-1y"),
-        ("-1y", "-6mo"),
-        ("-6mo", "-1mo"),
-        ("-1mo", "now"),
+        ("-3mo", "-2mo"),
+        ("-2mo", "-1mo"),
+        ("-1mo", "-2w"),
+        ("-2w", "-1w"),
+        ("-1w", "now"),
     ]
 
-    # Randomly select a time range based on weights (more recent ranges are more likely)
-    start, end = random.choices(weights, weights=[1, 2, 3, 4])[0]
+    # More even distribution for demo purposes
+    start, end = random.choices(weights, weights=[1, 1, 1, 1, 1])[0]
 
     return fake.date_time_between(start_date=start, end_date=end, tzinfo=timezone.utc)
 
 
+# -----------------------------
+# Main seeding function
+# -----------------------------
 async def seed() -> None:
     async with AsyncSessionLocal() as db:
 
@@ -211,6 +264,18 @@ async def seed() -> None:
 
         for review in review_objects:
             await run_absa_for_review(db, review)
+
+        await db.commit()
+
+
+        print("Creating historical vibe snapshots...")
+
+        for business in businesses:
+            print(f"Backfilling business {business.id}...")
+            await backfill_vibe_snapshots(db, business.id)
+
+        await db.commit()
+
 
         await db.commit()
 

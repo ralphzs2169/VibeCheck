@@ -102,30 +102,29 @@ async def get_dashboard(
     db: AsyncSession = Depends(get_db)
 ):
     return {
-        "vibe": await compute_vibe_summary(db, business_id),
-        "distribution": await AnalyticsService.get_sentiment_distribution(
-            db, business_id
-        ),
-        "trend": await AnalyticsService.get_sentiment_trend_slope(
-            db, business_id
-        ),
-        "volatility": await AnalyticsService.get_sentiment_volatility(
-            db, business_id
-        ),
-        "peak_drop": await AnalyticsService.get_peak_and_drop(
-            db, business_id
-        ),
-        "temporal": await AnalyticsService.get_temporal_aggregation(
-            db, business_id, "monthly"
-        ),
-        "aspects": await AnalyticsService.get_business_aspect_summary(
-            db, business_id
-        )
+        # -------------------------
+        # VIBE LAYER (PRIMARY)
+        # -------------------------
+        "vibe_summary": await compute_vibe_summary(db, business_id),
+
+        "latest_vibe": await AnalyticsService.get_latest_vibe(db, business_id),
+        "vibe_trend": await AnalyticsService.get_vibe_score_trend(db, business_id),
+        "vibe_volatility": await AnalyticsService.get_vibe_volatility(db, business_id),
+
+        # optional fallback snapshot summary
+        "vibe_history": await business_service.get_vibe_snapshots(db, business_id),
+        "vibe_over_time": await AnalyticsService.get_vibe_score_over_time(db, business_id),
+
+         # -------------------------
+        # SENTIMENT LAYER (RAW INSIGHTS)
+        # -------------------------
+        "distribution": await AnalyticsService.get_sentiment_distribution(db, business_id),
+        "trend": await AnalyticsService.get_sentiment_trend_slope(db, business_id),
+        "volatility": await AnalyticsService.get_sentiment_volatility(db, business_id),
+        "peak_drop": await AnalyticsService.get_peak_and_drop(db, business_id),
+
+        "temporal": await AnalyticsService.get_temporal_aggregation(db, business_id, "monthly"),
+        "forecast": await AnalyticsService.forecast_sentiment(db, business_id),
+        "aspects": await AnalyticsService.get_business_aspect_summary(db, business_id),
     }
 
-# @router.get("/{business_id}/absa")
-# async def get_business_aspects(
-#     business_id: int,
-#     db: AsyncSession = Depends(get_db)
-# ):
-#     return await AnalyticsService.get_business_aspect_summary(db, business_id)

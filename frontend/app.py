@@ -33,12 +33,19 @@ dashboard = fetch_json(
     f"{API_URL}/{business_id}/dashboard"
 )
 
-vibe = dashboard["vibe"]
+vibe = dashboard["vibe_summary"]
+
+vibe_trend = dashboard["vibe_trend"]
+vibe_volatility = dashboard["vibe_volatility"]
+latest_vibe = dashboard["latest_vibe"]
+
+
 distribution = dashboard["distribution"]
 trend = dashboard["trend"]
 volatility = dashboard["volatility"]
 peak_drop = dashboard["peak_drop"]
 temporal = dashboard["temporal"]
+forecast = dashboard.get("forecast", None)
 aspects = dashboard.get("aspects", {})
 
 
@@ -53,7 +60,7 @@ with col1:
     st.metric("Vibe Label", vibe["vibe_label"])
 
 with col2:
-    st.metric("Vibe Score", vibe["vibe_score"])
+    st.metric("Vibe Score", latest_vibe.get("vibe_score", '-'))
 
 with col3:
     st.metric("Reviews", vibe["review_count"])
@@ -61,6 +68,49 @@ with col3:
 st.write(vibe["summary_text"])
 
 st.write("**Keywords:**", ", ".join(vibe["keywords"]))
+
+
+st.subheader("📊 Vibe Analytics (Business Health Score)")
+
+col1, col2, col3 = st.columns(3)
+
+st.subheader("📈 Vibe Score Over Time")
+
+vibe_time = dashboard.get("vibe_over_time", {})
+
+if vibe_time and vibe_time.get("scores"):
+
+    df_vibe = pd.DataFrame({
+        "date": pd.to_datetime(vibe_time["labels"], utc=True, errors="coerce"),
+        "vibe_score": vibe_time["scores"]
+    })
+
+    df_vibe = df_vibe.set_index("date")
+
+    st.line_chart(df_vibe["vibe_score"])
+
+else:
+    st.info("No vibe snapshot history available.")
+
+with col1:
+    st.metric(
+        "Vibe Trend",
+        vibe_trend["trend"],
+        delta=round(vibe_trend["slope"], 4)
+    )
+
+with col2:
+    st.metric(
+        "Vibe Volatility",
+        vibe_volatility["stability"],
+        delta=round(vibe_volatility["volatility"], 4)
+    )
+
+with col3:
+    st.metric(
+        "Latest Vibe Score",
+        latest_vibe.get("vibe_score", 0)
+    )
 
 
 # -----------------------------
@@ -141,6 +191,21 @@ if drop:
     st.error(
         f"Largest drop: {drop['date']} ({drop['change']:.4f})"
     )
+
+
+# -----------------------------
+# Forecast Section
+# -----------------------------
+st.subheader("🔮 Sentiment Forecast")
+
+if forecast:
+    st.metric(
+        label="Predicted Future Vibe",
+        value=forecast.get("predicted_vibe", "N/A"),
+        delta=round(forecast.get("forecast_score", 0), 4)
+    )
+else:
+    st.info("No forecast available.")
 
 
 # -----------------------------
