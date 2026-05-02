@@ -134,18 +134,14 @@ async def compute_vibe_summary(
     db: AsyncSession,
     business_id: int,
     as_of_date: datetime.datetime | None = None,
-    minimum_review_count: int | None = None,
     allow_insufficient_data: bool = False
 ) -> dict:
     
-    # Use default if not specified
-    if minimum_review_count is None:
-        minimum_review_count = MINIMUM_REVIEW_COUNT
     
     reviews_with_scores = await get_reviews_with_scores(db, business_id, as_of_date)
 
     # Only block if minimum review count is required AND not allowing insufficient data
-    if not allow_insufficient_data and len(reviews_with_scores) < minimum_review_count:
+    if not allow_insufficient_data and len(reviews_with_scores) < MINIMUM_REVIEW_COUNT:
         return {
             "status": "insufficient_data",
             "business_id": business_id
@@ -157,8 +153,7 @@ async def compute_vibe_summary(
             "status": "insufficient_data",
             "business_id": business_id
         }
-
-    # Use a clearer naming for derived size
+    
     n_reviews = len(reviews_with_scores)
 
     avg_score, scores = compute_sentiment_scores(reviews_with_scores)

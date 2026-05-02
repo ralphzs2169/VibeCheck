@@ -8,7 +8,6 @@ import backend.app.services.business_service as business_service
 import backend.app.services.user_service as user_service
 from backend.app.models.review import Review
 from backend.app.services.sentiment_service import analyze_sentiment
-from backend.app.services.vibe_snapshot_service import create_vibe_snapshot
 
 
 async def create_review(db: AsyncSession, review) -> Review:

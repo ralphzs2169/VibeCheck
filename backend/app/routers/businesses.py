@@ -123,7 +123,7 @@ async def get_dashboard(
         "volatility": await AnalyticsService.get_sentiment_volatility(db, business_id),
         "peak_drop": await AnalyticsService.get_peak_and_drop(db, business_id),
 
-        "temporal": await AnalyticsService.get_temporal_aggregation(db, business_id, "monthly"),
+        "temporal": await AnalyticsService.get_temporal_aggregation(db, business_id, "daily"),
         "forecast": await AnalyticsService.forecast_sentiment(db, business_id),
         "aspects": await AnalyticsService.get_business_aspect_summary(db, business_id),
     }

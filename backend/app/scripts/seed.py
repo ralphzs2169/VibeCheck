@@ -50,6 +50,13 @@ NEGATIVE_ASPECTS = [
     "unresponsive staff",
 ]
 
+BUSINESS_VIBE_PROFILES = {
+    "improving": {"base": -0.4, "growth": 0.015},
+    "kind_stable": {"base": 0.1, "growth": 0.0},
+    "stable": {"base": 0.6, "growth": 0.0},
+    "declining": {"base": 0.7, "growth": -0.015},
+}
+
 # -----------------------------
 # Helper functions for seeding
 # -----------------------------
@@ -97,46 +104,106 @@ async def backfill_vibe_snapshots(db, business_id: int):
 
 
 
-def generate_review_with_drift(days_ago: int) -> str:
-    # Simulate review content that changes in style and sentiment based on how long ago it was written.
+# def generate_review_with_drift(days_ago: int) -> str:
+#     # Simulate review content that changes in style and sentiment based on how long ago it was written.
 
-    if days_ago > 365:
-        style = random.choice(["simple_positive", "simple_positive", "story"])
-    elif days_ago > 180:
-        style = random.choice(["mixed", "simple_positive", "story"])
-    elif days_ago > 60:
-        style = random.choice(["mixed", "simple_negative"])
-    else:
-        style = random.choice(["simple_negative", "simple_negative", "mixed"])
+#     if days_ago > 365:
+#         style = random.choice(["simple_positive", "simple_positive", "story"])
+#     elif days_ago > 180:
+#         style = random.choice(["mixed", "simple_positive", "story"])
+#     elif days_ago > 60:
+#         style = random.choice(["mixed", "simple_negative"])
+#     else:
+#         style = random.choice(["simple_negative", "simple_negative", "mixed"])
 
+#     feature = random.choice(FEATURES)
+#     pos1, pos2 = random.sample(POSITIVE_ASPECTS, 2)
+#     neg = random.choice(NEGATIVE_ASPECTS)
+
+#     if style == "simple_positive":
+#         return (
+#             f"The {feature} was excellent. "
+#             f"We enjoyed {pos1} and {pos2}. Highly recommended."
+#         )
+
+#     if style == "simple_negative":
+#         return (
+#             f"Very disappointing {feature}. "
+#             f"We experienced {neg} and poor service overall."
+#         )
+
+#     if style == "mixed":
+#         return (
+#             f"The {feature} had {pos1}, but also {neg}, "
+#             f"which affected our experience."
+#         )
+
+#     return (
+#         f"We stayed at a {feature}. The highlight was {pos1}, "
+#         f"but we also faced issues like {neg}. Still memorable overall."
+#     )
+
+def get_sentiment_stage(vibe_type: str, progress: float):
+    if vibe_type == "improving":
+        if progress < 0.4:
+            return "negative"
+        elif progress < 0.7:
+            return "neutral"
+        else:
+            return "positive"
+
+    elif vibe_type == "declining":
+        if progress < 0.4:
+            return "positive"
+        elif progress < 0.7:
+            return "neutral"
+        else:
+            return "negative"
+
+    elif vibe_type == "stable":
+        return "positive"
+
+    elif vibe_type == "kind_stable":
+        return "neutral"
+
+def generate_review_from_stage(stage: str):
     feature = random.choice(FEATURES)
-    pos1, pos2 = random.sample(POSITIVE_ASPECTS, 2)
+    pos = random.choice(POSITIVE_ASPECTS)
     neg = random.choice(NEGATIVE_ASPECTS)
 
-    if style == "simple_positive":
-        return (
-            f"The {feature} was excellent. "
-            f"We enjoyed {pos1} and {pos2}. Highly recommended."
-        )
+    if stage == "positive":
+        return f"The {feature} was excellent. We loved {pos}."
 
-    if style == "simple_negative":
-        return (
-            f"Very disappointing {feature}. "
-            f"We experienced {neg} and poor service overall."
-        )
+    if stage == "neutral":
+        return f"The {feature} was okay. It had {pos}, but also some issues."
 
-    if style == "mixed":
-        return (
-            f"The {feature} had {pos1}, but also {neg}, "
-            f"which affected our experience."
-        )
+    if stage == "negative":
+        return f"Very disappointing {feature}. We experienced {neg}."
+    
 
-    return (
-        f"We stayed at a {feature}. The highlight was {pos1}, "
-        f"but we also faced issues like {neg}. Still memorable overall."
-    )
+def add_noise(text: str):
+    noise = [
+        "overall though",
+        "still worth mentioning",
+        "honestly",
+        "to be fair",
+        ""
+    ]
+    return text + " " + random.choice(noise)
 
 
+def generate_review_by_vibe(vibe_type: str, day_index: int, total: int = 30):
+
+    progress = day_index / total
+    stage = get_sentiment_stage(vibe_type, progress)
+
+    base_text = generate_review_from_stage(stage)
+
+    # optional realism layer
+    if random.random() < 0.4:
+        base_text = add_noise(base_text)
+
+    return base_text
 
 def generate_created_at_with_bias() -> datetime:
     # For seeding demo data, distribute reviews evenly across time
@@ -194,7 +261,9 @@ async def seed() -> None:
         print("Seeding businesses...")
         businesses = []
 
-        for _ in range(5):
+        vibe_types = ["improving", "kind_stable", "stable", "declining"]
+
+        for i in range(4):
             business = Business(
                 name=fake.company(),
                 location=fake.city(),
@@ -203,6 +272,9 @@ async def seed() -> None:
             )
             db.add(business)
             businesses.append(business)
+
+            business.vibe_profile = vibe_types[i]
+
 
         await db.commit()
 
@@ -219,18 +291,20 @@ async def seed() -> None:
         review_objects = []
         review_meta = []
 
-        # -----------------------------
-        # Generate review inputs
-        # -----------------------------
-        for i in range(120):
-            business = random.choice(businesses)
+        reviews_per_business = 30
 
-            created_at = generate_created_at_with_bias()
-            days_ago = (datetime.now(timezone.utc) - created_at).days
+        for business in businesses:
+            for i in range(reviews_per_business):
 
-            review_text = generate_review_with_drift(days_ago)
+                created_at = datetime.now(timezone.utc) - timedelta(days=(reviews_per_business - i))
 
-            review_meta.append((review_text, business, created_at))
+                review_text = generate_review_by_vibe(
+                    business.vibe_profile,
+                    i,
+                    reviews_per_business
+                )
+
+                review_meta.append((review_text, business, created_at))
 
         review_texts = [r[0] for r in review_meta]
 
