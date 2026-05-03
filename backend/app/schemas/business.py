@@ -12,7 +12,7 @@ class BusinessBase(BaseModel):
 class BusinessCreate(BusinessBase):
     pass
 
-class BusinessUpdate(BusinessBase):
+class BusinessUpdate(BaseModel):
     name: str | None = Field(None, max_length=100)
     location: str | None = Field(None, max_length=100)
     short_description: str | None = Field(None, max_length=255)
@@ -20,6 +20,7 @@ class BusinessUpdate(BusinessBase):
 
 class BusinessResponse(BusinessBase):
     id: int
+    owner_id: int | None
     created_at: datetime
     updated_at: datetime
 

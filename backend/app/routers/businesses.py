@@ -1,12 +1,12 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import backend.app.services.business_service as business_service
+from backend.app.core.auth import get_authenticated_user
 from backend.app.core.database import get_db
 from backend.app.models.business import Business
-from backend.app.models.vibe_snapshot import VibeSnapshot
 from backend.app.schemas.business import (
     BusinessCreate,
     BusinessResponse,
@@ -19,16 +19,18 @@ from backend.app.services.vibe_service import compute_vibe_summary
 
 router = APIRouter()
 
+from backend.app.core.auth import get_authenticated_user
+from fastapi import HTTPException, status
 
-@router.post(
-    "",
-    response_model=BusinessResponse,
-    status_code=status.HTTP_201_CREATED,
-)
+@router.post("", response_model=BusinessResponse, status_code=status.HTTP_201_CREATED)
 async def create_business(
-    business: BusinessCreate, db: Annotated[AsyncSession, Depends(get_db)]
+    business: BusinessCreate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user=Depends(get_authenticated_user),
 ) -> Business:
-    return await business_service.create_business(db, business)
+    if current_user.role != "merchant":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only merchants can create a business")
+    return await business_service.create_business(db, business, owner_id=current_user.id)
 
 
 @router.get("/{business_id}", response_model=BusinessResponse)
@@ -50,15 +52,18 @@ async def update_business(
     business_id: int,
     updated_business: BusinessUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    current_user=Depends(get_authenticated_user),
 ) -> Business:
-    return await business_service.update_business(db, business_id, updated_business)
+   return await business_service.update_business(db, business_id, updated_business, current_user.id)
 
 
 @router.delete("/{business_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_business(
-    business_id: int, db: Annotated[AsyncSession, Depends(get_db)]
+    business_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user=Depends(get_authenticated_user),
 ):
-    await business_service.delete_business(db, business_id)
+    await business_service.delete_business(db, business_id, current_user.id)
 
 
 # -------------------------

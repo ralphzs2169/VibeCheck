@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import backend.app.services.user_service as user_service
+import backend.app.services.business_service as business_service
 from backend.app.core.auth import get_authenticated_user
 from backend.app.core.database import get_db
 from backend.app.schemas.user import (
@@ -13,6 +14,7 @@ from backend.app.schemas.user import (
     UserResponse,
     UserUpdate,
 )
+from backend.app.schemas.business import BusinessResponse
 
 router = APIRouter()
 
@@ -42,7 +44,7 @@ async def login(
         )
 
     token = await user_service.create_access_token(db, user)
-    return {"access_token": token, "token_type": "bearer"}
+    return {"access_token": token, "token_type": "bearer", "role": user.role, "user_id": user.id}
 
 
 @router.get("/me", response_model=UserResponse)
@@ -50,6 +52,16 @@ async def read_current_user(
     current_user=Depends(get_authenticated_user),
 ):
     return current_user
+
+
+@router.get("/me/businesses", response_model=list[BusinessResponse])
+async def get_my_businesses(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user=Depends(get_authenticated_user),
+):
+    if current_user.role != "merchant":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only merchants have businesses")
+    return await business_service.get_businesses_by_owner(db, current_user.id)
 
 
 @router.get("/{user_id}", response_model=UserResponse)

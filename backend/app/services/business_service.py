@@ -11,7 +11,7 @@ from backend.app.services.vibe_service import compute_vibe_summary
 from backend.app.schemas.business import BusinessCreate, BusinessUpdate
 
 
-async def create_business(db: AsyncSession, business: BusinessCreate) -> Business:
+async def create_business(db: AsyncSession, business: BusinessCreate, owner_id: int) -> Business:
     result = await db.execute(select(Business).where(Business.name == business.name))
     existing = result.scalars().first()
 
@@ -26,6 +26,7 @@ async def create_business(db: AsyncSession, business: BusinessCreate) -> Busines
         location=business.location,
         short_description=business.short_description,
         image_path=business.image_path,
+        owner_id=owner_id,   # ← assign the logged-in merchant
     )
 
     db.add(new_business)
@@ -64,9 +65,11 @@ async def get_businesses_by_owner(
 
 
 async def update_business(
-    db: AsyncSession, business_id: int, data: BusinessUpdate
+    db: AsyncSession, business_id: int, data: BusinessUpdate, requesting_user_id: int
 ) -> Business:
     business = await get_business_or_404(db, business_id)
+    if business.owner_id != requesting_user_id:
+        raise HTTPException(status_code=403, detail="Not your business")
 
     update_data = data.model_dump(exclude_unset=True)
 
@@ -90,8 +93,10 @@ async def update_business(
     return business
 
 
-async def delete_business(db: AsyncSession, business_id: int) -> None:
+async def delete_business(db: AsyncSession, business_id: int, requesting_user_id: int) -> None:
     business = await get_business_or_404(db, business_id)
+    if business.owner_id != requesting_user_id:
+        raise HTTPException(status_code=403, detail="Not your business")
     await db.delete(business)
     await db.commit()
 
