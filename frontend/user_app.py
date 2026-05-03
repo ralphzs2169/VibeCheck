@@ -13,20 +13,31 @@ def fetch_json(url, headers=None):
 
 def render_user_dashboard(user, token):
     st.header("👤 Reviewer Dashboard")
-    st.info("Write reviews, browse businesses, and track your review activity.")
+    st.info("Write reviews and browse businesses without exposing raw IDs.")
 
     headers = {"Authorization": f"Bearer {token}"} if token else {}
+
+    try:
+        businesses = fetch_json(f"{API_BASE_URL}/businesses", headers=headers)
+    except Exception as exc:
+        st.error(f"Unable to load businesses: {exc}")
+        businesses = []
+
+    business_options = {business.get("name", f"Business {business.get('id')}"): business.get("id") for business in businesses}
+    selected_business_name = st.selectbox("Choose a business", list(business_options.keys()), key="review_business_name")
+    business_id = business_options.get(selected_business_name)
 
     tab1, tab2, tab3 = st.tabs(["📝 Submit Review", "🏢 Browse Businesses", "📊 My Analytics"])
 
     with tab1:
         st.subheader("Write a Review")
-        business_id = st.number_input("Business ID", min_value=1, value=1, key="review_business_id")
         review_text = st.text_area("Your review", height=150, key="review_text")
 
         if st.button("Submit Review", key="submit_review"):
             if not review_text:
                 st.error("Enter a review before submitting.")
+            elif business_id is None:
+                st.error("Please select a business.")
             else:
                 payload = {
                     "business_id": business_id,
@@ -48,18 +59,12 @@ def render_user_dashboard(user, token):
 
     with tab2:
         st.subheader("Browse Businesses")
-        try:
-            businesses = fetch_json(f"{API_BASE_URL}/businesses", headers=headers)
-        except Exception as exc:
-            st.error(f"Unable to load businesses: {exc}")
-            businesses = []
-
         if businesses:
             for business in businesses:
                 with st.container():
                     st.markdown(f"**{business.get('name', 'Business')}**")
                     st.write(business.get('short_description', 'No description available.'))
-                    st.caption(f"Location: {business.get('location', 'Unknown')} | ID: {business.get('id')}")
+                    st.caption(f"Location: {business.get('location', 'Unknown')}")
         else:
             st.info("No businesses available at this time.")
 
