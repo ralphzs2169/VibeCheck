@@ -14,7 +14,6 @@ from backend.app.schemas.business import (
     BusinessWithReviewsResponse,
 )
 from backend.app.schemas.vibe_snapshot import VibeSnapshotResponse
-
 from backend.app.services.analytics_service import AnalyticsService
 from backend.app.services.vibe_service import compute_vibe_summary
 
@@ -36,16 +35,14 @@ async def create_business(
 async def get_business(
     business_id: int, db: Annotated[AsyncSession, Depends(get_db)]
 ) -> Business:
-    business = await business_service.get_business_or_404(db, business_id)
-    return business
+    return await business_service.get_business_or_404(db, business_id)
 
 
 @router.get("", response_model=list[BusinessResponse])
 async def get_businesses(
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> list[Business]:
-    businesses = await business_service.get_all_businesses(db)
-    return businesses
+):
+    return await business_service.get_all_businesses(db)
 
 
 @router.patch("/{business_id}", response_model=BusinessResponse)
@@ -87,9 +84,8 @@ async def get_business_vibe(
 @router.get("/vibe_snapshots/{business_id}", response_model=list[VibeSnapshotResponse])
 async def get_business_vibe_snapshots(
     business_id: int, db: Annotated[AsyncSession, Depends(get_db)]
-) -> list[VibeSnapshot]:
+):
     return await business_service.get_vibe_snapshots(db, business_id)
-
 
 
 # -------------------------
@@ -105,26 +101,21 @@ async def get_dashboard(
         # -------------------------
         # VIBE LAYER (PRIMARY)
         # -------------------------
-        "vibe_summary": await compute_vibe_summary(db, business_id),
-
-        "latest_vibe": await AnalyticsService.get_latest_vibe(db, business_id),
-        "vibe_trend": await AnalyticsService.get_vibe_score_trend(db, business_id),
+        "vibe_summary":    await compute_vibe_summary(db, business_id),
+        "latest_vibe":     await AnalyticsService.get_latest_vibe(db, business_id),
+        "vibe_trend":      await AnalyticsService.get_vibe_score_trend(db, business_id),
         "vibe_volatility": await AnalyticsService.get_vibe_volatility(db, business_id),
+        "vibe_history":    await business_service.get_vibe_snapshots(db, business_id),
+        "vibe_over_time":  await AnalyticsService.get_vibe_score_over_time(db, business_id),
 
-        # optional fallback snapshot summary
-        "vibe_history": await business_service.get_vibe_snapshots(db, business_id),
-        "vibe_over_time": await AnalyticsService.get_vibe_score_over_time(db, business_id),
-
-         # -------------------------
+        # -------------------------
         # SENTIMENT LAYER (RAW INSIGHTS)
         # -------------------------
         "distribution": await AnalyticsService.get_sentiment_distribution(db, business_id),
-        "trend": await AnalyticsService.get_sentiment_trend_slope(db, business_id),
-        "volatility": await AnalyticsService.get_sentiment_volatility(db, business_id),
-        "peak_drop": await AnalyticsService.get_peak_and_drop(db, business_id),
-
-        "temporal": await AnalyticsService.get_temporal_aggregation(db, business_id, "daily"),
-        "forecast": await AnalyticsService.forecast_sentiment(db, business_id),
-        "aspects": await AnalyticsService.get_business_aspect_summary(db, business_id),
+        "trend":        await AnalyticsService.get_sentiment_trend_slope(db, business_id),
+        "volatility":   await AnalyticsService.get_sentiment_volatility(db, business_id),
+        "peak_drop":    await AnalyticsService.get_peak_and_drop(db, business_id),
+        "temporal":     await AnalyticsService.get_temporal_aggregation(db, business_id, "daily"),
+        "forecast":     await AnalyticsService.forecast_sentiment(db, business_id),
+        "aspects":      await AnalyticsService.get_business_aspect_summary(db, business_id),
     }
-

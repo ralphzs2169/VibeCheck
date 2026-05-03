@@ -7,9 +7,10 @@ from sqlalchemy import DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.core.database import Base
-    
+
 if TYPE_CHECKING:
     from backend.app.models.review import Review
+    from backend.app.models.business import Business  # ← moved here
 
 class User(Base):
     __tablename__ = "users"
@@ -25,7 +26,6 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(UTC)
     )
-
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=lambda: datetime.now(UTC),
@@ -36,4 +36,7 @@ class User(Base):
         "Review",
         back_populates="user",
         cascade="all, delete-orphan"
+    )
+    businesses: Mapped[list["Business"]] = relationship(
+        "Business", back_populates="owner"
     )
