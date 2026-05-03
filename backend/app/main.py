@@ -3,7 +3,7 @@ import logging
 
 from fastapi import FastAPI
 
-from backend.app.core.constants import MINUTES_BETWEEN_SNAPSHOTS
+from backend.app.core.constants import HOURS_BETWEEN_SNAPSHOTS
 from backend.app.core.database import Base, engine
 from backend.app.core.scheduler import run_vibe_snapshot_job, scheduler
 from backend.app.routers import analytics, businesses, reviews, users
@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(
         run_vibe_snapshot_job,
         trigger="interval",
-        minutes=MINUTES_BETWEEN_SNAPSHOTS,
+        hours=HOURS_BETWEEN_SNAPSHOTS,
     )
 
     scheduler.start()

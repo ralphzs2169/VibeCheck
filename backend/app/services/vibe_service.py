@@ -134,27 +134,28 @@ async def compute_vibe_summary(
     db: AsyncSession,
     business_id: int,
     as_of_date: datetime.datetime | None = None,
-    allow_insufficient_data: bool = False
+    allow_insufficient_data: bool = False #True for analytics backfilling(seeding), False for real-time API 
 ) -> dict:
     
-    
+   
     reviews_with_scores = await get_reviews_with_scores(db, business_id, as_of_date)
+    review_count = len(reviews_with_scores)
 
     # Only block if minimum review count is required AND not allowing insufficient data
-    if not allow_insufficient_data and len(reviews_with_scores) < MINIMUM_REVIEW_COUNT:
+    if not allow_insufficient_data and review_count < MINIMUM_REVIEW_COUNT:
         return {
             "status": "insufficient_data",
-            "business_id": business_id
+            "business_id": business_id,
+            "review_count": review_count
         }
     
     # If no reviews at all, return insufficient data even if allowing it
-    if len(reviews_with_scores) == 0:
+    if review_count == 0:
         return {
             "status": "insufficient_data",
-            "business_id": business_id
+            "business_id": business_id,
+            "review_count": review_count
         }
-    
-    n_reviews = len(reviews_with_scores)
 
     avg_score, scores = compute_sentiment_scores(reviews_with_scores)
     label = get_vibe_label(avg_score)
@@ -167,7 +168,7 @@ async def compute_vibe_summary(
     summary = build_summary(
         label,
         avg_score,
-        n_reviews,
+        review_count,
         positive_keywords,
         negative_keywords
     )
@@ -177,11 +178,11 @@ async def compute_vibe_summary(
 
     mixed_count = sum(1 for score in scores if is_neutral(score))
 
-    positive_ratio = positive_count / n_reviews
-    negative_ratio = negative_count / n_reviews
+    positive_ratio = positive_count / review_count
+    negative_ratio = negative_count / review_count
 
     is_polarizing = (
-        n_reviews > 0 and
+        review_count > 0 and
         positive_ratio > POLARIZATION_MIN_RATIO and
         negative_ratio > POLARIZATION_MIN_RATIO
     )
@@ -195,7 +196,7 @@ async def compute_vibe_summary(
         "positive_keywords": positive_keywords,
         "negative_keywords": negative_keywords,
         "summary_text": summary,
-        "review_count": n_reviews,
+        "review_count": review_count,
         "score_distribution": {
             "positive": positive_count,
             "mixed": mixed_count,

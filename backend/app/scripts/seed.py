@@ -102,47 +102,6 @@ async def backfill_vibe_snapshots(db, business_id: int):
         print(f"  Created {snapshots_created} snapshots for business {business_id}")
 
 
-
-
-# def generate_review_with_drift(days_ago: int) -> str:
-#     # Simulate review content that changes in style and sentiment based on how long ago it was written.
-
-#     if days_ago > 365:
-#         style = random.choice(["simple_positive", "simple_positive", "story"])
-#     elif days_ago > 180:
-#         style = random.choice(["mixed", "simple_positive", "story"])
-#     elif days_ago > 60:
-#         style = random.choice(["mixed", "simple_negative"])
-#     else:
-#         style = random.choice(["simple_negative", "simple_negative", "mixed"])
-
-#     feature = random.choice(FEATURES)
-#     pos1, pos2 = random.sample(POSITIVE_ASPECTS, 2)
-#     neg = random.choice(NEGATIVE_ASPECTS)
-
-#     if style == "simple_positive":
-#         return (
-#             f"The {feature} was excellent. "
-#             f"We enjoyed {pos1} and {pos2}. Highly recommended."
-#         )
-
-#     if style == "simple_negative":
-#         return (
-#             f"Very disappointing {feature}. "
-#             f"We experienced {neg} and poor service overall."
-#         )
-
-#     if style == "mixed":
-#         return (
-#             f"The {feature} had {pos1}, but also {neg}, "
-#             f"which affected our experience."
-#         )
-
-#     return (
-#         f"We stayed at a {feature}. The highlight was {pos1}, "
-#         f"but we also faced issues like {neg}. Still memorable overall."
-#     )
-
 def get_sentiment_stage(vibe_type: str, progress: float):
     if vibe_type == "improving":
         if progress < 0.4:
@@ -206,20 +165,20 @@ def generate_review_by_vibe(vibe_type: str, day_index: int, total: int = 30):
     return base_text
 
 def generate_created_at_with_bias() -> datetime:
-    # For seeding demo data, distribute reviews evenly across time
-    # instead of biasing heavily towards recent dates
-    # This ensures we get multiple snapshots per business for better analytics demo
+    # Distribute reviews across full 6-month period for adequate forecast data
+    # Forecasting requires 6 months of monthly data points
     
     weights = [
+        ("-6mo", "-5mo"),
+        ("-5mo", "-4mo"),
+        ("-4mo", "-3mo"),
         ("-3mo", "-2mo"),
         ("-2mo", "-1mo"),
-        ("-1mo", "-2w"),
-        ("-2w", "-1w"),
-        ("-1w", "now"),
+        ("-1mo", "now"),
     ]
 
-    # More even distribution for demo purposes
-    start, end = random.choices(weights, weights=[1, 1, 1, 1, 1])[0]
+    # Even distribution across 6 months for demo purposes
+    start, end = random.choices(weights, weights=[1, 1, 1, 1, 1, 1])[0]
 
     return fake.date_time_between(start_date=start, end_date=end, tzinfo=timezone.utc)
 

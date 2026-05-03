@@ -27,83 +27,102 @@ def fetch_json(url):
 
 
 # -----------------------------
-# Fetch dashboard data (ONE request only)
+# Fetch dashboard data
 # -----------------------------
 dashboard = fetch_json(
     f"{API_URL}/{business_id}/dashboard"
 )
 
-vibe = dashboard["vibe_summary"]
+# -----------------------------
+# CORE DATA EXTRACTION
+# -----------------------------
+vibe_over_time = dashboard.get("vibe_over_time", {})
+vibe_trend = dashboard.get("vibe_trend", {})
+vibe_volatility = dashboard.get("vibe_volatility", {})
+latest_vibe = dashboard.get("latest_vibe", {})
 
-vibe_trend = dashboard["vibe_trend"]
-vibe_volatility = dashboard["vibe_volatility"]
-latest_vibe = dashboard["latest_vibe"]
-
-
-distribution = dashboard["distribution"]
-trend = dashboard["trend"]
-volatility = dashboard["volatility"]
-peak_drop = dashboard["peak_drop"]
-temporal = dashboard["temporal"]
+distribution = dashboard.get("distribution", {})
+trend = dashboard.get("trend", {})
+volatility = dashboard.get("volatility", {})
+peak_drop = dashboard.get("peak_drop", {})
+temporal = dashboard.get("temporal", {})
 forecast = dashboard.get("forecast", None)
 aspects = dashboard.get("aspects", {})
 
+# -----------------------------
+# META HANDLING (NEW STANDARD)
+# -----------------------------
+def is_reliable(meta):
+    if not meta:
+        return False
+    return meta.get("is_reliable", False)
+
 
 # -----------------------------
-# Current Vibe Summary
+# CURRENT VIBE SUMMARY
 # -----------------------------
 st.subheader("🌟 Current Vibe Summary")
 
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.metric("Vibe Label", vibe["vibe_label"])
+    st.metric(
+        "Vibe Label",
+        latest_vibe.get("vibe_label", "No data")
+    )
 
 with col2:
-    st.metric("Vibe Score", latest_vibe.get("vibe_score", '-'))
+    st.metric(
+        "Vibe Score",
+        latest_vibe.get("vibe_score", "-")
+    )
 
 with col3:
-    st.metric("Reviews", vibe["review_count"])
+    st.metric(
+        "Reviews",
+        vibe_over_time.get("meta", {}).get("sample_size", 0)
+    )
 
-st.write(vibe["summary_text"])
-
-st.write("**Keywords:**", ", ".join(vibe["keywords"]))
+st.write(latest_vibe.get("summary_text", "No summary available."))
 
 
-st.subheader("📊 Vibe Analytics (Business Health Score)")
-
-col1, col2, col3 = st.columns(3)
-
+# -----------------------------
+# VIBE OVER TIME
+# -----------------------------
 st.subheader("📈 Vibe Score Over Time")
 
-vibe_time = dashboard.get("vibe_over_time", {})
+if vibe_over_time.get("data"):
 
-if vibe_time and vibe_time.get("scores"):
+    df_vibe = pd.DataFrame(vibe_over_time["data"])
 
-    df_vibe = pd.DataFrame({
-        "date": pd.to_datetime(vibe_time["labels"], utc=True, errors="coerce"),
-        "vibe_score": vibe_time["scores"]
-    })
-
+    df_vibe["date"] = pd.to_datetime(df_vibe["period"], errors="coerce")
     df_vibe = df_vibe.set_index("date")
 
-    st.line_chart(df_vibe["vibe_score"])
+    st.line_chart(df_vibe["score"])
 
 else:
     st.info("No vibe snapshot history available.")
 
+
+# -----------------------------
+# VIBE METRICS
+# -----------------------------
+st.subheader("📊 Vibe Analytics")
+
+col1, col2, col3 = st.columns(3)
+
 with col1:
     st.metric(
         "Vibe Trend",
-        vibe_trend["trend"],
-        delta=round(vibe_trend["slope"], 4)
+        vibe_trend.get("trend", "N/A"),
+        delta=round(vibe_trend.get("slope", 0), 4)
     )
 
 with col2:
     st.metric(
         "Vibe Volatility",
-        vibe_volatility["stability"],
-        delta=round(vibe_volatility["volatility"], 4)
+        vibe_volatility.get("stability", "N/A"),
+        delta=round(vibe_volatility.get("volatility", 0), 4)
     )
 
 with col3:
@@ -114,46 +133,56 @@ with col3:
 
 
 # -----------------------------
-# Temporal Trend
+# SENTIMENT OVER TIME
 # -----------------------------
 st.subheader("📈 Sentiment Trend Over Time")
 
-if temporal:
-    df_temporal = pd.DataFrame(temporal)
+if temporal and temporal.get("data"):
+
+    df_temporal = pd.DataFrame(temporal["data"])
     df_temporal = df_temporal.set_index("period")
 
     st.line_chart(df_temporal["avg_score"])
+
 else:
     st.info("No temporal data available.")
 
 
 # -----------------------------
-# Distribution Pie Chart
+# SENTIMENT DISTRIBUTION
 # -----------------------------
 st.subheader("🥧 Sentiment Distribution")
 
-dist = distribution["distribution"]
+dist = distribution.get("distribution", {})
 
-df_dist = pd.DataFrame.from_dict(
-    dist,
-    orient="index",
-    columns=["count"]
-)
+if dist:
 
-fig, ax = plt.subplots()
-df_dist.plot.pie(
-    y="count",
-    autopct="%1.1f%%",
-    legend=False,
-    ylabel="",
-    ax=ax
-)
+    # Extract count and percentage from nested structure
+    counts_only = {label: data["count"] for label, data in dist.items()}
+    
+    df_dist = pd.DataFrame.from_dict(
+        counts_only,
+        orient="index",
+        columns=["count"]
+    )
 
-st.pyplot(fig)
+    fig, ax = plt.subplots()
+
+    df_dist["count"].plot.pie(
+        autopct="%1.1f%%",
+        legend=False,
+        ylabel="",
+        ax=ax
+    )
+
+    st.pyplot(fig)
+
+else:
+    st.info("No distribution data.")
 
 
 # -----------------------------
-# Analytics Metrics
+# ANALYTICS METRICS
 # -----------------------------
 st.subheader("📌 Analytics Metrics")
 
@@ -161,26 +190,26 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.metric(
-        label="Trend",
-        value=trend["trend"],
-        delta=round(trend["slope"], 4)
+        "Trend",
+        trend.get("trend", "N/A"),
+        delta=round(trend.get("slope", 0), 4)
     )
 
 with col2:
     st.metric(
-        label="Volatility",
-        value=volatility["stability"],
-        delta=round(volatility["volatility"], 4)
+        "Volatility",
+        volatility.get("stability", "N/A"),
+        delta=round(volatility.get("volatility", 0), 4)
     )
 
 
 # -----------------------------
-# Peak / Drop Alerts
+# PEAK / DROP
 # -----------------------------
 st.subheader("🚨 Major Sentiment Changes")
 
-peak = peak_drop["peak"]
-drop = peak_drop["drop"]
+peak = peak_drop.get("peak")
+drop = peak_drop.get("drop")
 
 if peak:
     st.success(
@@ -194,38 +223,47 @@ if drop:
 
 
 # -----------------------------
-# Forecast Section
+# FORECAST
 # -----------------------------
 st.subheader("🔮 Sentiment Forecast")
 
-if forecast:
+if forecast and forecast.get("status") != "insufficient_data":
     st.metric(
-        label="Predicted Future Vibe",
-        value=forecast.get("predicted_vibe", "N/A"),
+        "Predicted Future Vibe",
+        forecast.get("predicted_vibe", "N/A"),
         delta=round(forecast.get("forecast_score", 0), 4)
     )
 else:
-    st.info("No forecast available.")
+    meta = forecast.get("meta", {}) if forecast else {}
+    min_required = meta.get("min_required", 6)
+    sample_size = meta.get("sample_size", 0)
+    st.warning(
+        f"⚠️ Insufficient data for forecast. Need {min_required} months of data, have {sample_size} month(s)."
+    )
 
 
 # -----------------------------
-# Extra Signals
+# ADDITIONAL SIGNALS
 # -----------------------------
 st.subheader("🔍 Additional Signals")
 
-st.write(
-    f"**Polarizing:** {vibe['score_distribution']['is_polarizing']}"
-)
+score_dist = vibe_over_time.get("score_distribution", {})
 
-st.write(
-    f"Positive: {vibe['score_distribution']['positive']} | "
-    f"Mixed: {vibe['score_distribution']['mixed']} | "
-    f"Negative: {vibe['score_distribution']['negative']}"
-)
+if score_dist:
+
+    st.write(
+        f"**Polarizing:** {score_dist.get('is_polarizing', False)}"
+    )
+
+    st.write(
+        f"Positive: {score_dist.get('positive', 0)} | "
+        f"Mixed: {score_dist.get('mixed', 0)} | "
+        f"Negative: {score_dist.get('negative', 0)}"
+    )
 
 
 # -----------------------------
-# ASPECT ANALYTICS
+# ASPECT ANALYTICS HELPERS
 # -----------------------------
 def convert_score_to_label(score: float) -> str:
     if score >= 0.3:
@@ -238,29 +276,26 @@ def convert_score_to_label(score: float) -> str:
         return "Needs Improvement ⚠️"
     else:
         return "Critical 🔴"
-    
+
+
 # -----------------------------
-# ASPECT ANALYTICS (MERCHANT VIEW)
+# ASPECT ANALYTICS
 # -----------------------------
 st.subheader("🍽️ Aspect Insights (Merchant View)")
 
-aspects = dashboard.get("aspects", {})
+aspect_summary = aspects.get("summary", {}) if aspects else {}
 
-if aspects:
+if aspect_summary:
 
-    df_aspects = pd.DataFrame.from_dict(aspects, orient="index")
+    df_aspects = pd.DataFrame.from_dict(aspect_summary, orient="index")
     df_aspects = df_aspects.reset_index().rename(columns={"index": "aspect"})
 
-    # convert score → business-friendly label
     df_aspects["status"] = df_aspects["avg_score"].apply(convert_score_to_label)
 
-    # -----------------------------
-    # Layout (2 columns)
-    # -----------------------------
     col1, col2 = st.columns(2)
 
     # -----------------------------
-    # 1. Aspect Health Overview (LABELS instead of scores)
+    # Aspect Health
     # -----------------------------
     with col1:
         st.markdown("### 📊 Aspect Health")
@@ -273,13 +308,13 @@ if aspects:
 
         ax.bar(df_aspects["aspect"], df_aspects["avg_score"], color=colors)
         ax.axhline(0, color="black", linewidth=0.8)
-        ax.set_ylabel("Sentiment Direction (Internal Only)")
+        ax.set_ylabel("Sentiment Direction")
         ax.set_xlabel("Aspect")
 
         st.pyplot(fig)
 
     # -----------------------------
-    # 2. Mention Frequency (IMPORTANT FOR MERCHANTS)
+    # Mention Frequency
     # -----------------------------
     with col2:
         st.markdown("### 📦 What Customers Talk About Most")
@@ -292,18 +327,17 @@ if aspects:
         st.pyplot(fig2)
 
     # -----------------------------
-    # 3. Merchant-Friendly Table
+    # TABLE VIEW
     # -----------------------------
-    st.markdown("### 🧠 Summary (What You Should Focus On)")
+    st.markdown("### 🧠 Summary (Actionable Insights)")
 
-    display_df = df_aspects[["aspect", "status", "count"]].copy()
-
+    display_df = df_aspects[["aspect", "status", "count"]]
     display_df = display_df.sort_values("count", ascending=False)
 
     st.dataframe(display_df, use_container_width=True)
 
     # -----------------------------
-    # 4. Key Insight (MOST IMPORTANT FOR MERCHANTS)
+    # KEY INSIGHTS
     # -----------------------------
     worst = df_aspects.sort_values("avg_score").iloc[0]
     best = df_aspects.sort_values("avg_score", ascending=False).iloc[0]
