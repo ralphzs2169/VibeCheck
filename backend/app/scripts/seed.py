@@ -247,15 +247,40 @@ async def seed() -> None:
         print("Seeding users...")
         users = []
 
-        for _ in range(10):
+        merchant = User(
+            username="merchant_owner",
+            firstname="Merchant",
+            lastname="Owner",
+            role="merchant",
+            hashed_password=hash_password("Password123"),
+        )
+        db.add(merchant)
+        users.append(merchant)
+
+        reviewer = User(
+            username="reviewer_user",
+            firstname="Reviewer",
+            lastname="User",
+            role="reviewer",
+            hashed_password=hash_password("Password123"),
+        )
+        db.add(reviewer)
+        users.append(reviewer)
+
+        for _ in range(8):
             user = User(
                 username=fake.unique.user_name(),
                 firstname=fake.first_name(),
                 lastname=fake.last_name(),
+                role="reviewer",
                 hashed_password=hash_password("Password123"),
             )
             db.add(user)
             users.append(user)
+
+        print("Demo users created:")
+        print("  merchant_owner / Password123  (merchant)")
+        print("  reviewer_user / Password123  (reviewer)")
 
         # -----------------------------
         # Seed businesses

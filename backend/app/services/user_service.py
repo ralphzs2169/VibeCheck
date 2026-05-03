@@ -6,6 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 
+DEFAULT_ROLE = "reviewer"
+
 from backend.app.models.user import User
 from backend.app.schemas.user import UserCreate, UserUpdate
 
@@ -54,6 +56,7 @@ async def create_user(db: AsyncSession, user: UserCreate) -> User:
         username=user.username,
         firstname=user.firstname,
         lastname=user.lastname,
+        role=user.role or DEFAULT_ROLE,
         hashed_password=hash_password(user.password),
     )
 
