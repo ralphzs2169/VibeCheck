@@ -1,11 +1,13 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import backend.app.services.review_service as review_service
+from backend.app.core.auth import get_current_user
 from backend.app.core.database import get_db
 from backend.app.models.review import Review
+from backend.app.models.user import User
 from backend.app.schemas.aspect_sentiment import AspectSentimentResponse
 from backend.app.schemas.review import ReviewCreate, ReviewResponse, ReviewUpdate
 from backend.app.services.absa_service import get_review_aspects
@@ -19,8 +21,27 @@ router = APIRouter()
     status_code=status.HTTP_201_CREATED,
 )
 async def create_review(
-    review: ReviewCreate, db: Annotated[AsyncSession, Depends(get_db)]
+    review: ReviewCreate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: User | None = Depends(get_current_user),
 ) -> Review:
+    review_data = review.model_dump()
+
+    if current_user:
+        if review_data.get("user_id") is not None and review_data["user_id"] != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Authenticated users can only create reviews for themselves",
+            )
+        review_data["user_id"] = current_user.id
+
+    if review_data.get("user_id") is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="user_id must be provided if not authenticated",
+        )
+
+    review = ReviewCreate(**review_data)
     review = await review_service.create_review(db, review)
     return review
 

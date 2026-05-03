@@ -1,11 +1,18 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import backend.app.services.user_service as user_service
+from backend.app.core.auth import get_authenticated_user
 from backend.app.core.database import get_db
-from backend.app.schemas.user import UserCreate, UserResponse, UserUpdate
+from backend.app.schemas.user import (
+    TokenResponse,
+    UserCreate,
+    UserLogin,
+    UserResponse,
+    UserUpdate,
+)
 
 router = APIRouter()
 
@@ -17,6 +24,32 @@ router = APIRouter()
 )
 async def create_user(user: UserCreate, db: Annotated[AsyncSession, Depends(get_db)]):
     return await user_service.create_user(db, user)
+
+
+@router.post("/login", response_model=TokenResponse)
+async def login(
+    credentials: UserLogin,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    user = await user_service.authenticate_user(
+        db, credentials.username, credentials.password
+    )
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    token = await user_service.create_access_token(db, user)
+    return {"access_token": token, "token_type": "bearer"}
+
+
+@router.get("/me", response_model=UserResponse)
+async def read_current_user(
+    current_user=Depends(get_authenticated_user),
+):
+    return current_user
 
 
 @router.get("/{user_id}", response_model=UserResponse)

@@ -6,7 +6,8 @@ async def test_vibe_insufficient_data(client):
     user = await client.post("/api/users", json={
         "username": "u1",
         "firstname": "Test",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "Password123"
     })
     user_id = user.json()["id"]
 
@@ -37,7 +38,8 @@ async def test_vibe_positive_case(client):
     user = await client.post("/api/users", json={
         "username": "u2",
         "firstname": "Test",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "Password123"
     })
     user_id = user.json()["id"]
 
@@ -79,7 +81,8 @@ async def test_vibe_mixed_case(client):
     user = await client.post("/api/users", json={
         "username": "u3",
         "firstname": "Test",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "Password123"
     })
     user_id = user.json()["id"]
 
@@ -125,7 +128,8 @@ async def test_vibe_polarizing_case(client):
     user = await client.post("/api/users", json={
         "username": "u4",
         "firstname": "Test",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "Password123"
     })
     user_id = user.json()["id"]
 

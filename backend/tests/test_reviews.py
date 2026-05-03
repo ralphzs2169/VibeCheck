@@ -6,7 +6,8 @@ async def test_create_review(client):
     user = await client.post("/api/users", json={
         "username": "review_user",
         "firstname": "Rev",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "Password123"
     })
 
     business = await client.post("/api/businesses", json={
@@ -27,11 +28,51 @@ async def test_create_review(client):
 
 
 @pytest.mark.asyncio
+async def test_create_review_authenticated_user(client):
+    password = "Password123"
+    user = await client.post("/api/users", json={
+        "username": "auth_review_user",
+        "firstname": "Auth",
+        "lastname": "Reviewer",
+        "password": password,
+    })
+    assert user.status_code == 201
+
+    login_response = await client.post("/api/users/login", json={
+        "username": "auth_review_user",
+        "password": password,
+    })
+    assert login_response.status_code == 200
+    token = login_response.json()["access_token"]
+
+    business = await client.post("/api/businesses", json={
+        "name": "Auth Cafe",
+        "location": "Cebu",
+        "short_description": "Test business",
+        "image_path": None
+    })
+    assert business.status_code == 201
+
+    response = await client.post(
+        "/api/reviews",
+        json={
+            "content": "Authenticated review",
+            "business_id": business.json()["id"],
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["user_id"] == user.json()["id"]
+
+
+@pytest.mark.asyncio
 async def test_get_review_success(client):
     user = await client.post("/api/users", json={
         "username": "getter",
         "firstname": "Get",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "Password123"
     })
 
     business = await client.post("/api/businesses", json={
@@ -60,7 +101,8 @@ async def test_update_review(client):
     user = await client.post("/api/users", json={
         "username": "upd_user",
         "firstname": "Upd",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "Password123"
     })
 
     business = await client.post("/api/businesses", json={
@@ -91,7 +133,8 @@ async def test_delete_review(client):
     user = await client.post("/api/users", json={
         "username": "del_user",
         "firstname": "Del",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "Password123"
     })
 
     business = await client.post("/api/businesses", json={

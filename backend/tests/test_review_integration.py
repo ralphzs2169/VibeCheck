@@ -15,7 +15,8 @@ async def test_create_review_updates_vibe_flow():
         user_res = await client.post("/api/users", json={
             "username": "testuser",
             "firstname": "Test",
-            "lastname": "User"
+            "lastname": "User",
+            "password": "Password123"
         })
         assert user_res.status_code == 201
         user_id = user_res.json()["id"]

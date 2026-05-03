@@ -14,7 +14,8 @@ async def test_review_triggers_absa_pipeline():
         user_res = await client.post("/api/users", json={
             "username": "absa_user",
             "firstname": "ABSA",
-            "lastname": "Tester"
+            "lastname": "Tester",
+            "password": "Password123"
         })
         assert user_res.status_code == 201
         user_id = user_res.json()["id"]

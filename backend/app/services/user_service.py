@@ -1,9 +1,41 @@
+import hashlib
+import hmac
+import secrets
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 
 from backend.app.models.user import User
 from backend.app.schemas.user import UserCreate, UserUpdate
+
+PASSWORD_HASH_ITERATIONS = 100_000
+
+
+def hash_password(password: str) -> str:
+    salt = secrets.token_hex(16)
+    key = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt.encode("utf-8"),
+        PASSWORD_HASH_ITERATIONS,
+    )
+    return f"{salt}${key.hex()}"
+
+
+def verify_password(password: str, hashed_password: str) -> bool:
+    try:
+        salt, stored_key = hashed_password.split("$", 1)
+    except ValueError:
+        return False
+
+    key = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt.encode("utf-8"),
+        PASSWORD_HASH_ITERATIONS,
+    )
+    return hmac.compare_digest(key.hex(), stored_key)
 
 
 async def create_user(db: AsyncSession, user: UserCreate) -> User:
@@ -21,7 +53,8 @@ async def create_user(db: AsyncSession, user: UserCreate) -> User:
     new_user = User(
         username=user.username,
         firstname=user.firstname,
-        lastname=user.lastname
+        lastname=user.lastname,
+        hashed_password=hash_password(user.password),
     )
 
     db.add(new_user)
@@ -44,6 +77,35 @@ async def get_user_or_404(db: AsyncSession, user_id: int) -> User:
         )
 
     return user
+
+
+async def get_user_by_username(db: AsyncSession, username: str) -> User | None:
+    result = await db.execute(select(User).where(User.username == username))
+    return result.scalars().first()
+
+
+async def get_user_by_token(db: AsyncSession, token: str) -> User | None:
+    result = await db.execute(select(User).where(User.token == token))
+    return result.scalars().first()
+
+
+async def authenticate_user(
+    db: AsyncSession,
+    username: str,
+    password: str,
+) -> User | None:
+    user = await get_user_by_username(db, username)
+    if not user or not verify_password(password, user.hashed_password):
+        return None
+    return user
+
+
+async def create_access_token(db: AsyncSession, user: User) -> str:
+    token = secrets.token_urlsafe(32)
+    user.token = token
+    await db.commit()
+    await db.refresh(user)
+    return token
 
 
 async def get_all_users(db: AsyncSession) -> list[User]:
@@ -74,6 +136,9 @@ async def update_user(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Username already exists",
             )
+
+    if "password" in update_data:
+        user.hashed_password = hash_password(update_data.pop("password"))
 
     for field, value in update_data.items():
         setattr(user, field, value)

@@ -5,7 +5,7 @@ class ReviewBase(BaseModel):
     content: str = Field(..., max_length=500)
 
 class ReviewCreate(ReviewBase):
-    user_id: int = Field(..., gt=0) #modify later with actual user_id from auth
+    user_id: int | None = Field(None, gt=0)
     business_id: int = Field(..., gt=0)
 
 class ReviewUpdate(ReviewBase):

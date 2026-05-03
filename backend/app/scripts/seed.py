@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from backend.app.core.database import Base, engine
 from backend.app.services.absa_service import run_absa_for_review
 from backend.app.services.sentiment_service import analyze_sentiment_batch
+from backend.app.services.user_service import hash_password
 from backend.app.services.vibe_snapshot_service import create_vibe_snapshot
 
 from ..core.database import AsyncSessionLocal
@@ -251,6 +252,7 @@ async def seed() -> None:
                 username=fake.unique.user_name(),
                 firstname=fake.first_name(),
                 lastname=fake.last_name(),
+                hashed_password=hash_password("Password123"),
             )
             db.add(user)
             users.append(user)
