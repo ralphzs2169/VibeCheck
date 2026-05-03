@@ -231,8 +231,9 @@ def generate_created_at_with_bias() -> datetime:
 async def seed() -> None:
     async with AsyncSessionLocal() as db:
 
-        # Create tables if they don't exist
+        # Recreate tables to ensure schema changes are applied
         async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
 
         # Clear existing data
