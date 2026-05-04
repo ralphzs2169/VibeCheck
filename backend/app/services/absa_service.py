@@ -4,20 +4,21 @@ import re
 from typing import List, Tuple
 
 import numpy as np
-from sentence_transformers import SentenceTransformer, util
+from sentence_transformers import util
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.aspects import ASPECT_KEYWORDS, ASPECTS
 from backend.app.core.constants import (
+    AND_SPLIT_LONG_SENTENCE_SIZE,
+    AND_SPLIT_THRESHOLD_LONG,
+    AND_SPLIT_THRESHOLD_SHORT,
     MIN_CLAUSE_LENGTH,
     MIN_SENTIMENT_CONFIDENCE,
-    SIMILARITY_THRESHOLD,
-    AND_SPLIT_THRESHOLD_SHORT,
-    AND_SPLIT_THRESHOLD_LONG,
-    AND_SPLIT_LONG_SENTENCE_SIZE,
     MIN_SPLIT_PART_LENGTH,
+    SIMILARITY_THRESHOLD,
 )
+from backend.app.core.ml_registry import MLRegistry
 from backend.app.models.aspect_sentiment import AspectSentiment
 from backend.app.models.review import Review
 from backend.app.services.sentiment_service import analyze_sentiment
@@ -31,16 +32,12 @@ async def get_review_aspects(db: AsyncSession, review_id: int) -> List[AspectSen
     result = await db.execute(stmt)
     return result.scalars().all()
 
-# Initialize the sentence transformer model and pre-compute aspect embeddings
-model = SentenceTransformer("all-MiniLM-L6-v2")
 
+# Prepare aspect keys and keywords for efficient access in ABSA functions
 ASPECT_KEYS = list(ASPECTS.keys())
-ASPECT_TEXTS = list(ASPECTS.values())
 
-# pre-compute aspect embeddings for efficient similarity calculations during ABSA
-ASPECT_EMBEDDINGS = model.encode(ASPECT_TEXTS, convert_to_tensor=True)
-
-
+# flatten all aspect keywords into a single set for quick lookup 
+# during smart splitting and aspect detection
 ALL_ASPECT_KEYWORDS = {
     keyword for keywords in ASPECT_KEYWORDS.values()
     for keyword in keywords
@@ -141,11 +138,14 @@ def strong_match_boost(sentence, aspect) -> bool:
 
 # Aspect detection function
 # uses cosine similarity to match sentences to predefined aspects
-def detect_aspects(sentence: str) -> List[Tuple[str, float]]:
+def detect_aspects(sentence: str, models: MLRegistry) -> List[Tuple[str, float]]:
 
-    embedding = model.encode(sentence, convert_to_tensor=True)
+    if models.aspect_embeddings is None:
+        raise ValueError("aspect_embeddings not initialized")
 
-    aspect_similarity = util.cos_sim(embedding, ASPECT_EMBEDDINGS)[0]
+    embedding = models.embedding.encode(sentence, convert_to_tensor=True)
+
+    aspect_similarity = util.cos_sim(embedding, models.aspect_embeddings)[0]
     aspect_similarity = aspect_similarity.cpu().numpy()
 
     results = []
@@ -171,7 +171,8 @@ def detect_aspects(sentence: str) -> List[Tuple[str, float]]:
 
 async def run_absa_for_review(
     db: AsyncSession,
-    review: Review
+    review: Review,
+    models: MLRegistry
 ) -> List[AspectSentiment]:
 
     if review.id is None:
@@ -187,7 +188,7 @@ async def run_absa_for_review(
     # Each record represents an (aspect, sentence) pair with its own sentiment score.
     for sentence in sentences:
 
-        detected_aspects = detect_aspects(sentence)
+        detected_aspects = detect_aspects(sentence, models)
 
         for aspect, aspect_confidence in detected_aspects:
 
@@ -202,7 +203,8 @@ async def run_absa_for_review(
             aspect_text = f"{aspect}: {sentence}"
 
             sentiment_score, sentiment_label, sentiment_confidence = analyze_sentiment(
-                aspect_text
+                aspect_text,
+                models.sentiment
             )
 
             if sentiment_confidence < MIN_SENTIMENT_CONFIDENCE:

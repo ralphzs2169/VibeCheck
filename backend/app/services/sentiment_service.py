@@ -1,11 +1,6 @@
-from transformers import pipeline
+from transformers import Pipeline
 
-sentiment_pipeline = pipeline(
-    "sentiment-analysis",
-    model="distilbert-base-uncased-finetuned-sst-2-english"
-)
-
-def analyze_sentiment(text: str):
+def analyze_sentiment(text: str, sentiment_pipeline: Pipeline) -> tuple[float, str, float]:
     result = sentiment_pipeline(text, truncation=True, max_length=512)[0]
 
     raw_label = result["label"]
@@ -27,7 +22,7 @@ def analyze_sentiment(text: str):
 
 
 # For seed data or batch processing, we can use a batch version of the sentiment analysis
-def analyze_sentiment_batch(texts: list[str]):
+def analyze_sentiment_batch(texts: list[str], sentiment_pipeline: Pipeline) -> list[tuple[float, str, float]]:
     results = sentiment_pipeline(texts, truncation=True, max_length=512)
 
     outputs = []

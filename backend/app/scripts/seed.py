@@ -7,8 +7,12 @@ from datetime import datetime, timedelta, timezone
 
 from faker import Faker
 from sqlalchemy import func, select
+from transformers import pipeline
+from sentence_transformers import SentenceTransformer
 
 from backend.app.core.database import Base, engine
+from backend.app.core.ml_registry import MLRegistry
+from backend.app.core.aspects import ASPECTS
 from backend.app.services.absa_service import run_absa_for_review
 from backend.app.services.sentiment_service import analyze_sentiment_batch
 from backend.app.services.vibe_snapshot_service import create_vibe_snapshot
@@ -70,7 +74,7 @@ async def get_first_review_date(db, business_id: int):
     return result.scalar()
 
 
-async def backfill_vibe_snapshots(db, business_id: int):
+async def backfill_vibe_snapshots(db, business_id: int, models: MLRegistry):
     first_date = await get_first_review_date(db, business_id)
 
     if not first_date:
@@ -92,6 +96,7 @@ async def backfill_vibe_snapshots(db, business_id: int):
         snapshot = await create_vibe_snapshot(
             db,
             business_id,
+            models,
             snapshot_date=current
         )
         if snapshot is not None:
@@ -187,6 +192,21 @@ def generate_created_at_with_bias() -> datetime:
 # Main seeding function
 # -----------------------------
 async def seed() -> None:
+    # Load ML models first
+    print("Loading ML models...")
+    sentiment_model = pipeline(
+        "sentiment-analysis",
+        model="distilbert-base-uncased-finetuned-sst-2-english"
+    )
+    embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+    aspect_texts = list(ASPECTS.values())
+    aspect_embeddings = embedding_model.encode(aspect_texts, convert_to_tensor=True)
+    models = MLRegistry(
+        sentiment=sentiment_model,
+        embedding=embedding_model,
+        aspect_embeddings=aspect_embeddings
+    )
+    
     async with AsyncSessionLocal() as db:
 
         # Create tables if they don't exist
@@ -268,7 +288,7 @@ async def seed() -> None:
         review_texts = [r[0] for r in review_meta]
 
         # sentiment batch
-        results = analyze_sentiment_batch(review_texts)
+        results = analyze_sentiment_batch(review_texts, models.sentiment)
 
         # Create review objects 
         for (review_text, business, created_at), (score, label, _) in zip(
@@ -305,7 +325,7 @@ async def seed() -> None:
 
         for business in businesses:
             print(f"Backfilling business {business.id}...")
-            await backfill_vibe_snapshots(db, business.id)
+            await backfill_vibe_snapshots(db, business.id, models)
 
         await db.commit()
 

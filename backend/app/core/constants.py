@@ -19,6 +19,9 @@ VIBE_LABELS = {
     "high_negative": "Highly Negative"
 }
 
+# number of keywords to extract for vibe summaries (can be adjusted based on desired summary length and detail)
+KEYWORD_EXTRACTION_TOP_N = 4
+
 # used to determine if a business is considered "neutral" in vibe, 
 # which can affect how we present the summary
 VIBE_NEUTRAL_LOW = VIBE_THRESHOLDS["negative"]
@@ -29,8 +32,6 @@ POLARIZATION_MIN_RATIO = 0.3
 
 # Minimum number of reviews required to compute a vibe summary
 MINIMUM_REVIEW_COUNT = 3 
-
-
 
 # --------------------------
 # ABSA CONSTANTS
@@ -46,8 +47,8 @@ MIN_SENTIMENT_CONFIDENCE = 0.65
 # minimum number of characters for a clause to be considered valid
 MIN_CLAUSE_LENGTH = 8 
 
-# thresholds for smart "and" splitting in ABSA to avoid over-splitting 
-# short clauses that may not contain multiple aspects
+# thresholds for smart "and" splitting in ABSA to avoid 
+#  over-splitting short clauses that may not contain multiple aspects
 AND_SPLIT_THRESHOLD_SHORT = 0.5
 AND_SPLIT_THRESHOLD_LONG = 0.6
 AND_SPLIT_LONG_SENTENCE_SIZE = 3

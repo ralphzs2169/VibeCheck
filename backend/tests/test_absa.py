@@ -1,3 +1,4 @@
+import pytest
 from backend.app.services.absa_service import detect_aspects, split_sentences
 
 
@@ -12,24 +13,33 @@ def test_split_sentences_basic():
     assert "parking is bad" in joined
 
 
-def test_detect_aspects_returns_general_when_low_similarity():
+@pytest.mark.asyncio
+async def test_detect_aspects_returns_general_when_low_similarity(client):
     sentence = "random unrelated text"
 
-    result = detect_aspects(sentence)
+    # Get models from app state which are initialized by setup_models fixture
+    models = client._transport.app.state.models
+    result = detect_aspects(sentence, models)
 
     assert result[0][0] == "general"
 
 
-def test_detect_aspects_basic_output():
+@pytest.mark.asyncio
+async def test_detect_aspects_basic_output(client):
     sentence = "The food was amazing and delicious"
 
-    result = detect_aspects(sentence)
+    # Get models from app state
+    models = client._transport.app.state.models
+    result = detect_aspects(sentence, models)
 
     assert isinstance(result, list)
     assert len(result) >= 1
 
 
-def test_detect_aspects_empty_input():
-    result = detect_aspects("")
+@pytest.mark.asyncio
+async def test_detect_aspects_empty_input(client):
+    # Get models from app state
+    models = client._transport.app.state.models
+    result = detect_aspects("", models)
 
     assert result[0][0] == "general"

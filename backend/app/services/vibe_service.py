@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from keybert import KeyBERT
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,12 +10,11 @@ from backend.app.core.constants import (
     VIBE_NEUTRAL_HIGH,
     VIBE_NEUTRAL_LOW,
     VIBE_THRESHOLDS,
+    KEYWORD_EXTRACTION_TOP_N
 )
+from backend.app.core.ml_registry import MLRegistry
 from backend.app.models.review import Review
 from backend.app.services.sentiment_service import analyze_sentiment
-
-# Initialize KeyBERT model once at module level
-keyword_model = KeyBERT()
 
 
 async def get_reviews_with_scores(
@@ -59,28 +57,28 @@ def get_vibe_label(score: float) -> str:
         return VIBE_LABELS["high_negative"]
 
 
-def extract_keywords(reviews: list[str], top_n: int = 4) -> list[str]:
+def extract_keywords(reviews: list[str], models: MLRegistry | None = None) -> list[str]:
     if not reviews:
         return []
 
     text = " ".join(reviews)
-    keywords = keyword_model.extract_keywords(
+    keywords = models.keyword_extractor.extract_keywords(
         text,
         keyphrase_ngram_range=(1, 2),
         stop_words="english",
         use_mmr=True,
         diversity=0.5,
-        top_n=top_n
+        top_n=KEYWORD_EXTRACTION_TOP_N
     )
     return [keyword for keyword, score in keywords]
 
 
-def classify_keywords(keywords: list[str]) -> tuple[list[str], list[str]]:
+def classify_keywords(keywords: list[str], models: MLRegistry) -> tuple[list[str], list[str]]:
     positive_keywords = []
     negative_keywords = []
 
     for keyword in keywords:
-        score, label, confidence = analyze_sentiment(keyword)
+        score, label, confidence = analyze_sentiment(keyword, models.sentiment)
         if confidence < 0.75:
             continue
         if label == "positive":
@@ -133,6 +131,7 @@ def is_neutral(score: float) -> bool:
 async def compute_vibe_summary(
     db: AsyncSession,
     business_id: int,
+    models: MLRegistry,
     as_of_date: datetime.datetime | None = None,
     allow_insufficient_data: bool = False #True for analytics backfilling(seeding), False for real-time API 
 ) -> dict:
@@ -162,8 +161,8 @@ async def compute_vibe_summary(
 
     reviews_text = [content for content, _ in reviews_with_scores]
 
-    keywords = extract_keywords(reviews_text, top_n=4)
-    positive_keywords, negative_keywords = classify_keywords(keywords)
+    keywords = extract_keywords(reviews_text, models)
+    positive_keywords, negative_keywords = classify_keywords(keywords, models)
 
     summary = build_summary(
         label,

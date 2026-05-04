@@ -14,7 +14,6 @@ from backend.app.core.constants import (
     MIN_VIBE_TIMESERIES_POINTS,
     MIN_VIBE_TREND_POINTS,
     VIBE_TREND_NEGATIVE_SLOPE_THRESHOLD,
-    VIBE_TREND_NEGATIVE_THRESHOLD,
     VIBE_TREND_POSITIVE_SLOPE_THRESHOLD,
     SENTIMENT_TREND_POSITIVE_THRESHOLD,
     SENTIMENT_TREND_NEGATIVE_THRESHOLD,
@@ -22,7 +21,6 @@ from backend.app.core.constants import (
     MIN_PEAK_DROP_POINTS,
     ABSA_NEGATIVE_THRESHOLD,
     ABSA_POSITIVE_THRESHOLD,
-    MIN_VIBE_VOLATILITY_POINTS
 )
 from backend.app.models.aspect_sentiment import AspectSentiment
 from backend.app.models.review import Review

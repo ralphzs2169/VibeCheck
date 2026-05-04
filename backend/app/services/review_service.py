@@ -2,19 +2,20 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-
-from backend.app.services.absa_service import run_absa_for_review
 import backend.app.services.business_service as business_service
 import backend.app.services.user_service as user_service
+from backend.app.core.ml_registry import MLRegistry
 from backend.app.models.review import Review
+from backend.app.schemas.review import ReviewCreate
+from backend.app.services.absa_service import run_absa_for_review
 from backend.app.services.sentiment_service import analyze_sentiment
 
 
-async def create_review(db: AsyncSession, review) -> Review:
+async def create_review(db: AsyncSession, review: ReviewCreate, models: MLRegistry) -> Review:
     existing_user = await user_service.get_user_or_404(db, review.user_id)
     existing_business = await business_service.get_business_or_404(db, review.business_id)
 
-    sentiment_score, sentiment_label, _ = analyze_sentiment(review.content)
+    sentiment_score, sentiment_label, _ = analyze_sentiment(review.content, models.sentiment)
 
     new_review = Review(
         content=review.content,
@@ -28,7 +29,7 @@ async def create_review(db: AsyncSession, review) -> Review:
 
     await db.flush()  # ensures new_review.id is populated 
 
-    await run_absa_for_review(db, new_review)
+    await run_absa_for_review(db, new_review, models)
     # await create_vibe_snapshot(db, review.business_id)
 
     await db.commit()

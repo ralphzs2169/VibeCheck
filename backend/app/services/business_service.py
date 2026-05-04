@@ -6,6 +6,7 @@ from sqlalchemy.orm import selectinload
 from backend.app.models.business import Business
 from backend.app.models.review import Review
 from backend.app.models.vibe_snapshot import VibeSnapshot
+from backend.app.core.ml_registry import MLRegistry
 from backend.app.services.vibe_service import compute_vibe_summary
 from backend.app.schemas.business import BusinessCreate, BusinessUpdate 
 
@@ -103,7 +104,7 @@ async def get_business_with_reviews(db: AsyncSession, business_id: int) -> Busin
 # -------------------------
 # BUSINESS VIBE SERVICES
 # -------------------------
-async def get_business_vibe(db: AsyncSession, business_id: int) -> dict:
+async def get_business_vibe(db: AsyncSession, business_id: int, models: MLRegistry) -> dict:
     await get_business_or_404(db, business_id)
 
     result = await db.execute(
@@ -118,7 +119,7 @@ async def get_business_vibe(db: AsyncSession, business_id: int) -> dict:
             "message": "No reviews yet. Be the first to share your experience!",
         }
 
-    return await compute_vibe_summary(db, business_id)
+    return await compute_vibe_summary(db, business_id, models)
 
 
 async def get_vibe_snapshots(db: AsyncSession, business_id: int) -> list[VibeSnapshot]:
@@ -134,4 +135,5 @@ async def get_vibe_snapshots(db: AsyncSession, business_id: int) -> list[VibeSna
 # -------------------------
 # BUSINESS ABSA SERVICES
 # -------------------------
+
 

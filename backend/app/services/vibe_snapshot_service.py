@@ -1,6 +1,7 @@
 import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from backend.app.core.ml_registry import MLRegistry
 from backend.app.models.vibe_snapshot import VibeSnapshot
 from backend.app.services.vibe_service import compute_vibe_summary
 from backend.app.services.vibe_service import convert_sentiment_to_vibe_score
@@ -9,12 +10,14 @@ from backend.app.services.vibe_service import convert_sentiment_to_vibe_score
 async def create_vibe_snapshot(
     db: AsyncSession,
     business_id: int,
+    models: MLRegistry,
     snapshot_date: datetime.datetime,
 ) -> VibeSnapshot | None:
 
     data = await compute_vibe_summary(
         db,
         business_id,
+        models,
         as_of_date=snapshot_date,
         allow_insufficient_data=True  # Always create snapshots for analytics, even with few reviews
     )

@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import backend.app.services.review_service as review_service
@@ -19,9 +19,12 @@ router = APIRouter()
     status_code=status.HTTP_201_CREATED,
 )
 async def create_review(
-    review: ReviewCreate, db: Annotated[AsyncSession, Depends(get_db)]
+    review: ReviewCreate, 
+    db: Annotated[AsyncSession, Depends(get_db)],
+    request: Request
 ) -> Review:
-    review = await review_service.create_review(db, review)
+    models = request.app.state.models
+    review = await review_service.create_review(db, review, models)
     return review
 
 

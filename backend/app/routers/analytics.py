@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.database import get_db
@@ -84,9 +84,11 @@ async def get_aspect_summary(
 @router.get("/business/{business_id}/vibe_summary")
 async def get_vibe_summary(
     business_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    request: Request = None
 ):
-    return await vibe_service.compute_vibe_summary(db, business_id)
+    models = request.app.state.models if request else None
+    return await vibe_service.compute_vibe_summary(db, business_id, models)
 
 @router.get("/business/{business_id}/vibe_over_time")
 async def get_vibe_score_over_time(

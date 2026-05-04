@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import backend.app.services.business_service as business_service
@@ -79,9 +79,12 @@ async def get_business_with_reviews(
 # -------------------------
 @router.get("/vibe/{business_id}")
 async def get_business_vibe(
-    business_id: int, db: Annotated[AsyncSession, Depends(get_db)]
+    business_id: int, 
+    db: Annotated[AsyncSession, Depends(get_db)],
+    request: Request
 ) -> dict:
-    return await business_service.get_business_vibe(db, business_id)
+    models = request.app.state.models
+    return await business_service.get_business_vibe(db, business_id, models)
 
 
 @router.get("/vibe_snapshots/{business_id}", response_model=list[VibeSnapshotResponse])
@@ -99,13 +102,15 @@ async def get_business_vibe_snapshots(
 @router.get("/{business_id}/dashboard")
 async def get_dashboard(
     business_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    request: Request = None
 ):
+    models = request.app.state.models if request else None
     return {
         # -------------------------
         # VIBE LAYER (PRIMARY)
         # -------------------------
-        "vibe_summary": await compute_vibe_summary(db, business_id),
+        "vibe_summary": await compute_vibe_summary(db, business_id, models),
 
         "latest_vibe": await AnalyticsService.get_latest_vibe(db, business_id),
         "vibe_trend": await AnalyticsService.get_vibe_score_trend(db, business_id),
@@ -114,7 +119,7 @@ async def get_dashboard(
         # optional fallback snapshot summary
         "vibe_history": await business_service.get_vibe_snapshots(db, business_id),
         "vibe_over_time": await AnalyticsService.get_vibe_score_over_time(db, business_id),
-
+    
          # -------------------------
         # SENTIMENT LAYER (RAW INSIGHTS)
         # -------------------------

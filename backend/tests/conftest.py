@@ -6,7 +6,12 @@ from httpx import AsyncClient, ASGITransport
 import backend.app.models  # Import all models to register them with Base  # noqa: F401
 from backend.app.main import app
 from backend.app.core.database import get_db, Base
+from backend.app.core.ml_registry import MLRegistry
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from transformers import pipeline
+from sentence_transformers import SentenceTransformer
+
+from backend.app.core.aspects import ASPECTS
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
@@ -35,6 +40,35 @@ async def setup_db():
     yield
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+
+
+# Initialize ML models for tests - shared across all tests
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def setup_models():
+    """Load ML models once for the entire test session"""
+    sentiment_model = pipeline(
+        "sentiment-analysis",
+        model="distilbert-base-uncased-finetuned-sst-2-english"
+    )
+    
+    embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+    
+    # pre-compute aspect embeddings
+    aspect_texts = list(ASPECTS.values())
+    aspect_embeddings = embedding_model.encode(
+        aspect_texts,
+        convert_to_tensor=True
+    )
+    
+    app.state.models = MLRegistry(
+        sentiment=sentiment_model,
+        embedding=embedding_model,
+        aspect_embeddings=aspect_embeddings
+    )
+    
+    yield
+    
+    # Cleanup if needed
 
 
 # Async client - shared across all tests
