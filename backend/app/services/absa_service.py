@@ -145,11 +145,13 @@ def detect_aspects(sentence: str, models: MLRegistry) -> List[Tuple[str, float]]
 
     embedding = models.embedding.encode(sentence, convert_to_tensor=True)
 
+    # compute cosine similarity between sentence embedding and aspect embeddings
     aspect_similarity = util.cos_sim(embedding, models.aspect_embeddings)[0]
     aspect_similarity = aspect_similarity.cpu().numpy()
 
     results = []
 
+    # only consider aspects that exceed the similarity threshold, or have a strong keyword match
     for i, score in enumerate(aspect_similarity):
         aspect = ASPECT_KEYS[i]
 
@@ -195,11 +197,13 @@ async def run_absa_for_review(
             if aspect == "general":
                 continue
 
+            # if we've already recorded an aspect for this review, 
+            # we can skip it to avoid duplicates
             if aspect in seen_aspects:
                 continue
             seen_aspects.add(aspect)
 
-
+            # combine aspect and sentence for aspect-specific sentiment analysis
             aspect_text = f"{aspect}: {sentence}"
 
             sentiment_score, sentiment_label, sentiment_confidence = analyze_sentiment(
@@ -207,6 +211,8 @@ async def run_absa_for_review(
                 models.sentiment
             )
 
+            # only save aspect-sentiment pairs that have a strong sentiment 
+            # confidence to ensure quality of ABSA results
             if sentiment_confidence < MIN_SENTIMENT_CONFIDENCE:
                 continue
 

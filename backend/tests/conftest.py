@@ -1,4 +1,5 @@
 # conftest.py - runs before all tests to ensure models are registered
+from keybert import KeyBERT
 import pytest  # noqa: F401
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
@@ -60,10 +61,12 @@ async def setup_models():
         convert_to_tensor=True
     )
     
+    keyword_extractor_model = KeyBERT(model=embedding_model)
     app.state.models = MLRegistry(
         sentiment=sentiment_model,
         embedding=embedding_model,
-        aspect_embeddings=aspect_embeddings
+        aspect_embeddings=aspect_embeddings,
+        keyword_extractor=keyword_extractor_model
     )
     
     yield

@@ -1,5 +1,5 @@
 from fastapi import Request
-from backend.app.core.model_registry import ModelRegistry
+from backend.app.core.ml_registry import ModelRegistry
 
 
 def get_models(request: Request) -> ModelRegistry:

@@ -1,5 +1,6 @@
 
 
+from keybert import KeyBERT
 import pytest
 from httpx import AsyncClient, ASGITransport
 from backend.app.main import app
@@ -7,6 +8,7 @@ from transformers import pipeline
 from sentence_transformers import SentenceTransformer
 from backend.app.core.ml_registry import MLRegistry
 from backend.app.core.aspects import ASPECTS
+
 
 
 @pytest.mark.asyncio
@@ -20,10 +22,13 @@ async def test_create_review_updates_vibe_flow():
         embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
         aspect_texts = list(ASPECTS.values())
         aspect_embeddings = embedding_model.encode(aspect_texts, convert_to_tensor=True)
+        keyword_extractor_model = KeyBERT(model=embedding_model)
+
         app.state.models = MLRegistry(
             sentiment=sentiment_model,
             embedding=embedding_model,
-            aspect_embeddings=aspect_embeddings
+            aspect_embeddings=aspect_embeddings,
+            keyword_extractor=keyword_extractor_model
         )
 
     transport = ASGITransport(app=app)
