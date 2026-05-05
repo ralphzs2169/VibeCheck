@@ -1,26 +1,29 @@
 from datetime import datetime
+import logging
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Any
 
 from backend.app.core.constants import (
+    KEYWORD_EXTRACTION_TOP_N,
     MINIMUM_REVIEW_COUNT,
     POLARIZATION_MIN_RATIO,
     VIBE_LABELS,
     VIBE_NEUTRAL_HIGH,
     VIBE_NEUTRAL_LOW,
     VIBE_THRESHOLDS,
-    KEYWORD_EXTRACTION_TOP_N
 )
 from backend.app.core.ml_registry import MLRegistry
 from backend.app.models.review import Review
 from backend.app.services.sentiment_service import analyze_sentiment
 
+logger = logging.getLogger(__name__)
 
 async def get_reviews_with_scores(
     db: AsyncSession,
     business_id: int,
-    as_of_date: datetime | None = None
+    as_of_date: datetime | None = None # optional parameter to filter reviews up to a certain date for historical vibe snapshots
 ) -> list[tuple]:
 
     stmt = (
@@ -39,6 +42,7 @@ def compute_sentiment_scores(reviews_with_scores: list[tuple]) -> tuple[float, l
     if not reviews_with_scores:
         return 0.0, []
 
+    # compute average sentiment score across all reviews for the business
     scores = [score for _, score in reviews_with_scores]
     avg_score = sum(scores) / len(scores)
     return avg_score, scores
@@ -103,6 +107,8 @@ def build_summary(
     count: int,
     positive_keywords: list[str],
     negative_keywords: list[str],
+    llm_model: Any = None,
+    use_ai_summary: bool = False
 ) -> str:
     
     vibe_score = convert_sentiment_to_vibe_score(score)
@@ -117,12 +123,64 @@ def build_summary(
 
     insight = ". ".join(p.capitalize() for p in insight_parts) + "."
 
-    return (
+    base_summary = (
         f"Community sentiment is {label.lower()} "
         f"with a vibe score of {vibe_score}/5.0 across {count} reviews. "
         f"{insight}"
     )
 
+    if use_ai_summary:
+        logger.info("Generating AI-enhanced summary")
+        return enhance_summary_with_llm(base_summary, llm_model)
+
+    return base_summary
+
+# LLM enhancement to rewrite the summary in a more natural, 
+# concise way while preserving all factual information
+# (DO NOT USE YET)
+def enhance_summary_with_llm(
+    summary: str,
+    model: Any | None
+) -> str:
+
+    if model is None:
+        return summary
+
+    logger.info("Enhancing summary with LLM")
+
+    try:
+        prompt = f"""
+                    You are a product copywriter.
+
+                    Rewrite the following business review summary to make it:
+                    - natural and easy to read
+                    - concise (2–3 sentences max)
+                    - keep all factual information exactly the same
+                    - do NOT add new information
+
+                    Summary:
+                    {summary}
+                    """
+
+        response = model.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+
+        content = response.choices[0].message.content
+
+        if not content:
+            return summary
+
+        logger.info(f"LLM response: {content.strip()}")
+        return content.strip()
+
+    except Exception as e:
+        logger.error(f"Error occurred while generating AI-enhanced summary: {e}")
+        return summary
+    
 
 def is_neutral(score: float) -> bool:
     return VIBE_NEUTRAL_LOW <= score <= VIBE_NEUTRAL_HIGH
@@ -133,10 +191,11 @@ async def compute_vibe_summary(
     business_id: int,
     models: MLRegistry,
     as_of_date: datetime.datetime | None = None,
-    allow_insufficient_data: bool = False #True for analytics backfilling(seeding), False for real-time API 
+    allow_insufficient_data: bool = False,  # True for analytics backfilling(seeding), False for real-time API
+    use_ai_summary: bool = False
 ) -> dict:
     
-   
+    
     reviews_with_scores = await get_reviews_with_scores(db, business_id, as_of_date)
     review_count = len(reviews_with_scores)
 
@@ -145,7 +204,8 @@ async def compute_vibe_summary(
         return {
             "status": "insufficient_data",
             "business_id": business_id,
-            "review_count": review_count
+            "review_count": review_count,
+            "message": f"At least {MINIMUM_REVIEW_COUNT} reviews are needed to generate a vibe summary. Currently, there are {review_count} reviews."
         }
     
     # If no reviews at all, return insufficient data even if allowing it
@@ -153,13 +213,15 @@ async def compute_vibe_summary(
         return {
             "status": "insufficient_data",
             "business_id": business_id,
-            "review_count": review_count
+            "review_count": review_count, 
+            "message": "No reviews available to generate a vibe summary."
         }
 
     avg_score, scores = compute_sentiment_scores(reviews_with_scores)
     label = get_vibe_label(avg_score)
 
-    reviews_text = [content for content, _ in reviews_with_scores]
+    # extract keywords from reviews for additional insights in the vibe summary
+    reviews_text = [content for content, _ in reviews_with_scores] 
 
     keywords = extract_keywords(reviews_text, models)
     positive_keywords, negative_keywords = classify_keywords(keywords, models)
@@ -169,7 +231,9 @@ async def compute_vibe_summary(
         avg_score,
         review_count,
         positive_keywords,
-        negative_keywords
+        negative_keywords,
+        llm_model=models.large_language_model,
+        use_ai_summary=use_ai_summary
     )
 
     positive_count = sum(1 for score in scores if score > VIBE_THRESHOLDS["positive"])

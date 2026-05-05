@@ -6,6 +6,7 @@ import random
 from datetime import datetime, timedelta, timezone
 
 from faker import Faker
+from keybert import KeyBERT
 from sqlalchemy import func, select
 from transformers import pipeline
 from sentence_transformers import SentenceTransformer
@@ -97,7 +98,8 @@ async def backfill_vibe_snapshots(db, business_id: int, models: MLRegistry):
             db,
             business_id,
             models,
-            snapshot_date=current
+            snapshot_date=current,
+            use_ai_summary=False,  # Skip AI summary for backfill to save time - focus on vibe score and label
         )
         if snapshot is not None:
             snapshots_created += 1
@@ -198,13 +200,17 @@ async def seed() -> None:
         "sentiment-analysis",
         model="distilbert-base-uncased-finetuned-sst-2-english"
     )
+    
     embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
     aspect_texts = list(ASPECTS.values())
     aspect_embeddings = embedding_model.encode(aspect_texts, convert_to_tensor=True)
+    keyword_extractor_model = KeyBERT(model=embedding_model)
+
     models = MLRegistry(
         sentiment=sentiment_model,
         embedding=embedding_model,
-        aspect_embeddings=aspect_embeddings
+        aspect_embeddings=aspect_embeddings,
+        keyword_extractor=keyword_extractor_model
     )
     
     async with AsyncSessionLocal() as db:
@@ -316,7 +322,7 @@ async def seed() -> None:
         print("Running ABSA on seeded reviews...")
 
         for review in review_objects:
-            await run_absa_for_review(db, review)
+            await run_absa_for_review(db, review, models)
 
         await db.commit()
 

@@ -42,7 +42,7 @@ async def run_vibe_snapshot_job():
             
             now = datetime.datetime.now(datetime.timezone.utc)
             for business in businesses:
-                await create_vibe_snapshot(db, business.id, models, now)
+                await create_vibe_snapshot(db, business.id, models, now, use_ai_summary=False)
 
             await db.commit()
 

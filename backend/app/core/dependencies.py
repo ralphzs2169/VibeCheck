@@ -1,6 +1,6 @@
 from fastapi import Request
-from backend.app.core.ml_registry import ModelRegistry
+from backend.app.core.ml_registry import MLRegistry
 
 
-def get_models(request: Request) -> ModelRegistry:
+def get_models(request: Request) -> MLRegistry:
     return request.app.state.models

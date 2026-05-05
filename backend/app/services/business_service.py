@@ -1,14 +1,19 @@
+from datetime import datetime
+
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException, status
 from sqlalchemy.orm import selectinload
 
-from backend.app.models.business import Business
-from backend.app.models.review import Review
-from backend.app.models.vibe_snapshot import VibeSnapshot
 from backend.app.core.ml_registry import MLRegistry
+from backend.app.models.business import Business
+from backend.app.models.vibe_snapshot import VibeSnapshot
+from backend.app.schemas.business import BusinessCreate, BusinessUpdate
+from backend.app.services.vibe_snapshot_service import (
+    create_vibe_snapshot,
+    get_vibe_snapshots_for_business,
+)
 from backend.app.services.vibe_service import compute_vibe_summary
-from backend.app.schemas.business import BusinessCreate, BusinessUpdate 
 
 
 async def create_business(db: AsyncSession, business: BusinessCreate) -> Business:
@@ -104,32 +109,51 @@ async def get_business_with_reviews(db: AsyncSession, business_id: int) -> Busin
 # -------------------------
 # BUSINESS VIBE SERVICES
 # -------------------------
-async def get_business_vibe(db: AsyncSession, business_id: int, models: MLRegistry) -> dict:
+
+async def get_business_vibe_snapshots(
+    db: AsyncSession,
+    business_id: int
+):
+    # ensure business exists
     await get_business_or_404(db, business_id)
 
-    result = await db.execute(
-        select(Review.content).where(Review.business_id == business_id)
-    )
-
-    reviews = [r[0] for r in result.all()]
-
-    if not reviews:
-        return {
-            "status": "no_reviews",
-            "message": "No reviews yet. Be the first to share your experience!",
-        }
-
-    return await compute_vibe_summary(db, business_id, models)
+    # delegate to snapshot service
+    return await get_vibe_snapshots_for_business(db, business_id)
 
 
-async def get_vibe_snapshots(db: AsyncSession, business_id: int) -> list[VibeSnapshot]:
+async def get_business_latest_vibe(
+    db: AsyncSession,
+    business_id: int,
+    models: MLRegistry
+) -> dict:
+
     await get_business_or_404(db, business_id)
 
-    result = await db.execute(
-        select(VibeSnapshot).where(VibeSnapshot.business_id == business_id)
+    # Compute vibe summary on-the-fly from current reviews
+    # This ensures real-time vibe data with all fields (avg_score, score_distribution, etc.)
+    vibe_data = await compute_vibe_summary(
+        db,
+        business_id,
+        models,
+        as_of_date=None,  # None = use all reviews up to now
+        allow_insufficient_data=False  # Return insufficient_data status if < minimum reviews
     )
 
-    return result.scalars().all()
+    return vibe_data
+
+
+async def run_vibe_snapshot_pipeline(
+    db: AsyncSession,
+    business_id: int,
+    models: MLRegistry,
+    snapshot_date: datetime.datetime,
+    use_ai_summary: bool = False
+) -> VibeSnapshot | None:
+    snapshot = await create_vibe_snapshot(db, business_id, models, snapshot_date, use_ai_summary)
+    if snapshot:
+        await db.commit()
+        await db.refresh(snapshot)
+    return snapshot
 
 
 # -------------------------

@@ -26,6 +26,8 @@ class VibeSnapshot(Base):
     mixed_count: Mapped[int] = mapped_column(Integer, nullable=False)
     negative_count: Mapped[int] = mapped_column(Integer, nullable=False)
 
+    summary_text: Mapped[str] = mapped_column(String, nullable=False)
+    
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(UTC)
     )

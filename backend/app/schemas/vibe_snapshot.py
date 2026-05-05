@@ -12,6 +12,8 @@ class VibeSnapshotBase(BaseModel):
     mixed_count: int
     negative_count: int
 
+    summary_text: str
+
     snapshot_date: datetime
 
 

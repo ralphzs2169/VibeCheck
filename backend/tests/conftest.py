@@ -43,6 +43,36 @@ async def setup_db():
         await conn.run_sync(Base.metadata.drop_all)
 
 
+# Clear database between tests
+@pytest_asyncio.fixture(autouse=True)
+async def clear_db():
+    """Clear all tables before each test"""
+    # Import models to get access to table references
+    from backend.app.models.aspect_sentiment import AspectSentiment
+    from backend.app.models.business import Business
+    from backend.app.models.review import Review
+    from backend.app.models.user import User
+    from backend.app.models.vibe_snapshot import VibeSnapshot
+    
+    async with engine.begin() as conn:
+        # Delete in order to respect foreign key constraints
+        await conn.execute(AspectSentiment.__table__.delete())
+        await conn.execute(VibeSnapshot.__table__.delete())
+        await conn.execute(Review.__table__.delete())
+        await conn.execute(Business.__table__.delete())
+        await conn.execute(User.__table__.delete())
+    
+    yield
+    
+    # Cleanup after test
+    async with engine.begin() as conn:
+        await conn.execute(AspectSentiment.__table__.delete())
+        await conn.execute(VibeSnapshot.__table__.delete())
+        await conn.execute(Review.__table__.delete())
+        await conn.execute(Business.__table__.delete())
+        await conn.execute(User.__table__.delete())
+
+
 # Initialize ML models for tests - shared across all tests
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_models():

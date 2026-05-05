@@ -1,3 +1,4 @@
+import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, status
@@ -5,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import backend.app.services.business_service as business_service
 from backend.app.core.database import get_db
+from backend.app.core.dependencies import get_models
+from backend.app.core.ml_registry import MLRegistry
 from backend.app.models.business import Business
 from backend.app.models.vibe_snapshot import VibeSnapshot
 from backend.app.schemas.business import (
@@ -14,9 +17,7 @@ from backend.app.schemas.business import (
     BusinessWithReviewsResponse,
 )
 from backend.app.schemas.vibe_snapshot import VibeSnapshotResponse
-
 from backend.app.services.analytics_service import AnalyticsService
-from backend.app.services.vibe_service import compute_vibe_summary
 
 router = APIRouter()
 
@@ -78,21 +79,46 @@ async def get_business_with_reviews(
 # BUSINESS VIBE ROUTES
 # -------------------------
 @router.get("/vibe/{business_id}")
-async def get_business_vibe(
+async def get_business_latest_vibe(
     business_id: int, 
     db: Annotated[AsyncSession, Depends(get_db)],
     request: Request
 ) -> dict:
     models = request.app.state.models
-    return await business_service.get_business_vibe(db, business_id, models)
+    return await business_service.get_business_latest_vibe(db, business_id, models)
 
 
 @router.get("/vibe_snapshots/{business_id}", response_model=list[VibeSnapshotResponse])
 async def get_business_vibe_snapshots(
     business_id: int, db: Annotated[AsyncSession, Depends(get_db)]
 ) -> list[VibeSnapshot]:
-    return await business_service.get_vibe_snapshots(db, business_id)
+        snapshots = await business_service.get_business_vibe_snapshots(db, business_id)
 
+        return [
+            VibeSnapshotResponse.model_validate(s)
+            for s in snapshots
+        ]
+
+
+# This route is primarily for testing and analytics purposes, 
+# allowing us to trigger the snapshot pipeline on demand
+@router.post("/vibe-snapshots/run/{business_id}")
+async def run_snapshot(
+    business_id: int,
+    db: AsyncSession = Depends(get_db),
+    models: MLRegistry = Depends(get_models)
+):
+    now = datetime.datetime.now(datetime.timezone.utc)
+    snapshot = await business_service.run_vibe_snapshot_pipeline(
+        db=db,
+        business_id=business_id,
+        models=models,
+        snapshot_date=now
+        # PASS use_ai_summary=True to test LLM summary enhancement 
+        # (currently not recommended due to inconsistent output quality)
+    )
+
+    return snapshot
 
 
 # -------------------------
@@ -110,14 +136,12 @@ async def get_dashboard(
         # -------------------------
         # VIBE LAYER (PRIMARY)
         # -------------------------
-        "vibe_summary": await compute_vibe_summary(db, business_id, models),
-
-        "latest_vibe": await AnalyticsService.get_latest_vibe(db, business_id),
+        "latest_vibe": await business_service.get_business_latest_vibe(db, business_id, models),
         "vibe_trend": await AnalyticsService.get_vibe_score_trend(db, business_id),
         "vibe_volatility": await AnalyticsService.get_vibe_volatility(db, business_id),
 
         # optional fallback snapshot summary
-        "vibe_history": await business_service.get_vibe_snapshots(db, business_id),
+        "vibe_history": await business_service.get_business_vibe_snapshots(db, business_id),
         "vibe_over_time": await AnalyticsService.get_vibe_score_over_time(db, business_id),
     
          # -------------------------
