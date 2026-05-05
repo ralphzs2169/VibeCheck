@@ -6,9 +6,17 @@ async def test_vibe_insufficient_data(client):
     user = await client.post("/api/users", json={
         "username": "u1",
         "firstname": "Test",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "password123"
     })
     user_id = user.json()["id"]
+
+    # Login to get auth header
+    login_res = await client.post("/api/auth/login", json={
+        "username": "u1",
+        "password": "password123"
+    })
+    auth_header = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
 
     business = await client.post("/api/businesses", json={
         "name": "Low Data Cafe",
@@ -22,7 +30,7 @@ async def test_vibe_insufficient_data(client):
         "content": "Good place",
         "user_id": user_id,
         "business_id": business_id
-    })
+    }, headers=auth_header)
 
     result = await client.get(f"/api/businesses/vibe/{business_id}")
 
@@ -37,9 +45,17 @@ async def test_vibe_positive_case(client):
     user = await client.post("/api/users", json={
         "username": "u2",
         "firstname": "Test",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "password123"
     })
     user_id = user.json()["id"]
+
+    # Login to get auth header
+    login_res = await client.post("/api/auth/login", json={
+        "username": "u2",
+        "password": "password123"
+    })
+    auth_header = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
 
     business = await client.post("/api/businesses", json={
         "name": "Positive Cafe",
@@ -60,7 +76,7 @@ async def test_vibe_positive_case(client):
             "content": r,
             "user_id": user_id,
             "business_id": business_id
-        })
+        }, headers=auth_header)
 
     result = await client.get(f"/api/businesses/vibe/{business_id}")
     data = result.json()
@@ -79,9 +95,17 @@ async def test_vibe_mixed_case(client):
     user = await client.post("/api/users", json={
         "username": "u3",
         "firstname": "Test",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "password123"
     })
     user_id = user.json()["id"]
+
+    # Login to get auth header
+    login_res = await client.post("/api/auth/login", json={
+        "username": "u3",
+        "password": "password123"
+    })
+    auth_header = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
 
     business = await client.post("/api/businesses", json={
         "name": "Mixed Cafe",
@@ -103,7 +127,7 @@ async def test_vibe_mixed_case(client):
             "content": r,
             "user_id": user_id,
             "business_id": business_id
-        })
+        }, headers=auth_header)
 
     result = await client.get(f"/api/businesses/vibe/{business_id}")
     data = result.json()
@@ -125,9 +149,17 @@ async def test_vibe_polarizing_case(client):
     user = await client.post("/api/users", json={
         "username": "u4",
         "firstname": "Test",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "password123"
     })
     user_id = user.json()["id"]
+
+    # Login to get auth header
+    login_res = await client.post("/api/auth/login", json={
+        "username": "u4",
+        "password": "password123"
+    })
+    auth_header = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
 
     business = await client.post("/api/businesses", json={
         "name": "Polar Cafe",
@@ -151,7 +183,7 @@ async def test_vibe_polarizing_case(client):
             "content": r,
             "user_id": user_id,
             "business_id": business_id
-        })
+        }, headers=auth_header)
 
     result = await client.get(f"/api/businesses/vibe/{business_id}")
     data = result.json()

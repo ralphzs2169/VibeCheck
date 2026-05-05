@@ -7,9 +7,17 @@ async def test_vibe_endpoint_returns_vibe_data(client):
     user = await client.post("/api/users", json={
         "username": "test_user_endpoint",
         "firstname": "Test",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "password123"
     })
     user_id = user.json()["id"]
+
+    # Login to get auth header
+    login_res = await client.post("/api/auth/login", json={
+        "username": "test_user_endpoint",
+        "password": "password123"
+    })
+    auth_header = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
 
     business = await client.post("/api/businesses", json={
         "name": "Test Cafe Endpoint",
@@ -26,7 +34,7 @@ async def test_vibe_endpoint_returns_vibe_data(client):
             "content": text,
             "user_id": user_id,
             "business_id": business_id
-        })
+        }, headers=auth_header)
 
     # Get vibe data
     response = await client.get(f"/api/businesses/vibe/{business_id}")
@@ -56,9 +64,17 @@ async def test_vibe_endpoint_insufficient_data(client):
     user = await client.post("/api/users", json={
         "username": "insufficient_user",
         "firstname": "Test",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "password123"
     })
     user_id = user.json()["id"]
+
+    # Login to get auth header
+    login_res = await client.post("/api/auth/login", json={
+        "username": "insufficient_user",
+        "password": "password123"
+    })
+    auth_header = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
 
     business = await client.post("/api/businesses", json={
         "name": "Insufficient Cafe",
@@ -73,7 +89,7 @@ async def test_vibe_endpoint_insufficient_data(client):
         "content": "Just okay",
         "user_id": user_id,
         "business_id": business_id
-    })
+    }, headers=auth_header)
 
     # Get vibe data
     response = await client.get(f"/api/businesses/vibe/{business_id}")

@@ -118,9 +118,17 @@ async def test_compute_vibe_summary_via_endpoint_insufficient(client):
     user = await client.post("/api/users", json={
         "username": "compute_test_1",
         "firstname": "Test",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "password123"
     })
     user_id = user.json()["id"]
+
+    # Login to get auth header
+    login_res = await client.post("/api/auth/login", json={
+        "username": "compute_test_1",
+        "password": "password123"
+    })
+    auth_header = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
 
     business = await client.post("/api/businesses", json={
         "name": "Compute Test Cafe 1",
@@ -134,7 +142,7 @@ async def test_compute_vibe_summary_via_endpoint_insufficient(client):
         "content": "Okay",
         "user_id": user_id,
         "business_id": business_id
-    })
+    }, headers=auth_header)
 
     response = await client.get(f"/api/businesses/vibe/{business_id}")
     assert response.status_code == 200
@@ -151,9 +159,17 @@ async def test_compute_vibe_summary_via_endpoint_sufficient(client):
     user = await client.post("/api/users", json={
         "username": "compute_test_2",
         "firstname": "Test",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "password123"
     })
     user_id = user.json()["id"]
+
+    # Login to get auth header
+    login_res = await client.post("/api/auth/login", json={
+        "username": "compute_test_2",
+        "password": "password123"
+    })
+    auth_header = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
 
     business = await client.post("/api/businesses", json={
         "name": "Compute Test Cafe 2",
@@ -176,7 +192,7 @@ async def test_compute_vibe_summary_via_endpoint_sufficient(client):
             "content": text,
             "user_id": user_id,
             "business_id": business_id
-        })
+        }, headers=auth_header)
 
     response = await client.get(f"/api/businesses/vibe/{business_id}")
     assert response.status_code == 200
@@ -210,9 +226,17 @@ async def test_compute_vibe_summary_score_distribution(client):
     user = await client.post("/api/users", json={
         "username": "compute_test_4",
         "firstname": "Test",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "password123"
     })
     user_id = user.json()["id"]
+
+    # Login to get auth header
+    login_res = await client.post("/api/auth/login", json={
+        "username": "compute_test_4",
+        "password": "password123"
+    })
+    auth_header = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
 
     business = await client.post("/api/businesses", json={
         "name": "Compute Test Cafe 4",
@@ -232,7 +256,7 @@ async def test_compute_vibe_summary_score_distribution(client):
             "content": text,
             "user_id": user_id,
             "business_id": business_id
-        })
+        }, headers=auth_header)
 
     response = await client.get(f"/api/businesses/vibe/{business_id}")
     assert response.status_code == 200

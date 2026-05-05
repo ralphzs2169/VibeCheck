@@ -7,13 +7,14 @@ from datetime import datetime, timedelta, timezone
 
 from faker import Faker
 from keybert import KeyBERT
+from sentence_transformers import SentenceTransformer
 from sqlalchemy import func, select
 from transformers import pipeline
-from sentence_transformers import SentenceTransformer
 
+from backend.app.core.aspects import ASPECTS
 from backend.app.core.database import Base, engine
 from backend.app.core.ml_registry import MLRegistry
-from backend.app.core.aspects import ASPECTS
+from backend.app.core.security import hash_password
 from backend.app.services.absa_service import run_absa_for_review
 from backend.app.services.sentiment_service import analyze_sentiment_batch
 from backend.app.services.vibe_snapshot_service import create_vibe_snapshot
@@ -236,6 +237,7 @@ async def seed() -> None:
                 username=fake.unique.user_name(),
                 firstname=fake.first_name(),
                 lastname=fake.last_name(),
+                hashed_password=hash_password(fake.password(length=12)),  # FIXED: proper hashing
             )
             db.add(user)
             users.append(user)

@@ -623,3 +623,25 @@ class AnalyticsService:
             "interpretation": interpretation,
             "meta": AnalyticsMeta.reliability(len(rows), MIN_SPIKE_DATA_POINTS)
         }
+
+    @staticmethod
+    async def get_latest_vibe(db: AsyncSession, business_id: int):
+        """Get the latest vibe snapshot for a business"""
+        stmt = (
+            select(VibeSnapshot)
+            .where(VibeSnapshot.business_id == business_id)
+            .order_by(VibeSnapshot.snapshot_date.desc())
+            .limit(1)
+        )
+
+        result = await db.execute(stmt)
+        row = result.scalar_one_or_none()
+
+        if not row:
+            return {"status": "no_data"}
+
+        return {
+            "vibe_score": row.vibe_score,
+            "vibe_label": row.vibe_label,
+            "date": row.snapshot_date
+        }

@@ -39,10 +39,18 @@ async def test_create_review_updates_vibe_flow():
         user_res = await client.post("/api/users", json={
             "username": "testuser",
             "firstname": "Test",
-            "lastname": "User"
+            "lastname": "User",
+            "password": "password123"
         })
         assert user_res.status_code == 201
         user_id = user_res.json()["id"]
+
+        # Login to get auth header
+        login_res = await client.post("/api/auth/login", json={
+            "username": "testuser",
+            "password": "password123"
+        })
+        auth_header = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
 
         # 2. Create business
         business_res = await client.post("/api/businesses", json={
@@ -68,7 +76,7 @@ async def test_create_review_updates_vibe_flow():
                 "content": text,
                 "user_id": user_id,
                 "business_id": business_id
-            })
+            }, headers=auth_header)
             assert res.status_code == 201
             review_ids.append(res.json()["id"])
 

@@ -7,9 +7,17 @@ async def test_get_business_latest_vibe_insufficient_data(client):
     user = await client.post("/api/users", json={
         "username": "vibe_test_user_1",
         "firstname": "Test",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "password123"
     })
     user_id = user.json()["id"]
+
+    # Login to get auth header
+    login_res = await client.post("/api/auth/login", json={
+        "username": "vibe_test_user_1",
+        "password": "password123"
+    })
+    auth_header = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
 
     business = await client.post("/api/businesses", json={
         "name": "Low Review Cafe",
@@ -24,7 +32,7 @@ async def test_get_business_latest_vibe_insufficient_data(client):
         "content": "Just okay",
         "user_id": user_id,
         "business_id": business_id
-    })
+    }, headers=auth_header)
 
     response = await client.get(f"/api/businesses/vibe/{business_id}")
     assert response.status_code == 200
@@ -41,9 +49,17 @@ async def test_get_business_latest_vibe_sufficient_data(client):
     user = await client.post("/api/users", json={
         "username": "vibe_test_user_2",
         "firstname": "Test",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "password123"
     })
     user_id = user.json()["id"]
+
+    # Login to get auth header
+    login_res = await client.post("/api/auth/login", json={
+        "username": "vibe_test_user_2",
+        "password": "password123"
+    })
+    auth_header = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
 
     business = await client.post("/api/businesses", json={
         "name": "Good Review Cafe",
@@ -66,7 +82,7 @@ async def test_get_business_latest_vibe_sufficient_data(client):
             "content": text,
             "user_id": user_id,
             "business_id": business_id
-        })
+        }, headers=auth_header)
 
     response = await client.get(f"/api/businesses/vibe/{business_id}")
     assert response.status_code == 200
@@ -103,9 +119,17 @@ async def test_get_business_latest_vibe_mixed_sentiment(client):
     user = await client.post("/api/users", json={
         "username": "vibe_test_user_3",
         "firstname": "Test",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "password123"
     })
     user_id = user.json()["id"]
+
+    # Login to get auth header
+    login_res = await client.post("/api/auth/login", json={
+        "username": "vibe_test_user_3",
+        "password": "password123"
+    })
+    auth_header = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
 
     business = await client.post("/api/businesses", json={
         "name": "Mixed Review Cafe",
@@ -128,7 +152,7 @@ async def test_get_business_latest_vibe_mixed_sentiment(client):
             "content": text,
             "user_id": user_id,
             "business_id": business_id
-        })
+        }, headers=auth_header)
 
     response = await client.get(f"/api/businesses/vibe/{business_id}")
     assert response.status_code == 200
@@ -146,9 +170,17 @@ async def test_get_business_latest_vibe_polarizing(client):
     user = await client.post("/api/users", json={
         "username": "vibe_test_user_4",
         "firstname": "Test",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "password123"
     })
     user_id = user.json()["id"]
+
+    # Login to get auth header
+    login_res = await client.post("/api/auth/login", json={
+        "username": "vibe_test_user_4",
+        "password": "password123"
+    })
+    auth_header = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
 
     business = await client.post("/api/businesses", json={
         "name": "Polarizing Cafe",
@@ -174,7 +206,7 @@ async def test_get_business_latest_vibe_polarizing(client):
             "content": text,
             "user_id": user_id,
             "business_id": business_id
-        })
+        }, headers=auth_header)
 
     response = await client.get(f"/api/businesses/vibe/{business_id}")
     assert response.status_code == 200
@@ -207,6 +239,6 @@ async def test_vibe_snapshots_empty(client):
 @pytest.mark.asyncio
 async def test_vibe_snapshots_nonexistent_business(client):
     """Test vibe snapshots endpoint for non-existent business"""
-    response = await client.get(f"/api/businesses/vibe_snapshots/99999")
+    response = await client.get("/api/businesses/vibe_snapshots/99999")
     assert response.status_code == 404
 

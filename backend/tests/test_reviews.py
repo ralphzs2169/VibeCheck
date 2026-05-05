@@ -6,8 +6,16 @@ async def test_create_review(client):
     user = await client.post("/api/users", json={
         "username": "review_user",
         "firstname": "Rev",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "password123"
     })
+
+    # Login to get auth header
+    login_res = await client.post("/api/auth/login", json={
+        "username": "review_user",
+        "password": "password123"
+    })
+    auth_header = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
 
     business = await client.post("/api/businesses", json={
         "name": "Review Cafe",
@@ -20,7 +28,7 @@ async def test_create_review(client):
         "content": "Amazing place!",
         "user_id": user.json()["id"],
         "business_id": business.json()["id"]
-    })
+    }, headers=auth_header)
 
     assert response.status_code == 201
     assert response.json()["content"] == "Amazing place!"
@@ -31,8 +39,16 @@ async def test_get_review_success(client):
     user = await client.post("/api/users", json={
         "username": "getter",
         "firstname": "Get",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "password123"
     })
+
+    # Login to get auth header
+    login_res = await client.post("/api/auth/login", json={
+        "username": "getter",
+        "password": "password123"
+    })
+    auth_header = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
 
     business = await client.post("/api/businesses", json={
         "name": "Getter Cafe",
@@ -45,7 +61,7 @@ async def test_get_review_success(client):
         "content": "Nice vibe",
         "user_id": user.json()["id"],
         "business_id": business.json()["id"]
-    })
+    }, headers=auth_header)
 
     review_id = create.json()["id"]
 
@@ -60,8 +76,16 @@ async def test_update_review(client):
     user = await client.post("/api/users", json={
         "username": "upd_user",
         "firstname": "Upd",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "password123"
     })
+
+    # Login to get auth header
+    login_res = await client.post("/api/auth/login", json={
+        "username": "upd_user",
+        "password": "password123"
+    })
+    auth_header = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
 
     business = await client.post("/api/businesses", json={
         "name": "Update Cafe",
@@ -74,7 +98,7 @@ async def test_update_review(client):
         "content": "Okay lang",
         "user_id": user.json()["id"],
         "business_id": business.json()["id"]
-    })
+    }, headers=auth_header)
 
     review_id = create.json()["id"]
 
@@ -91,8 +115,16 @@ async def test_delete_review(client):
     user = await client.post("/api/users", json={
         "username": "del_user",
         "firstname": "Del",
-        "lastname": "User"
+        "lastname": "User",
+        "password": "password123"
     })
+
+    # Login to get auth header
+    login_res = await client.post("/api/auth/login", json={
+        "username": "del_user",
+        "password": "password123"
+    })
+    auth_header = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
 
     business = await client.post("/api/businesses", json={
         "name": "Delete Cafe",
@@ -105,7 +137,7 @@ async def test_delete_review(client):
         "content": "To be deleted",
         "user_id": user.json()["id"],
         "business_id": business.json()["id"]
-    })
+    }, headers=auth_header)
 
     review_id = create.json()["id"]
 

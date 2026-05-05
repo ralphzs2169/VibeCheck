@@ -32,10 +32,18 @@ async def test_review_triggers_absa_pipeline():
         user_res = await client.post("/api/users", json={
             "username": "absa_user",
             "firstname": "ABSA",
-            "lastname": "Tester"
+            "lastname": "Tester",
+            "password": "password123"
         })
         assert user_res.status_code == 201
         user_id = user_res.json()["id"]
+
+        # Login to get auth header
+        login_res = await client.post("/api/auth/login", json={
+            "username": "absa_user",
+            "password": "password123"
+        })
+        auth_header = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
 
         # 2. Create business
         biz_res = await client.post("/api/businesses", json={
@@ -52,7 +60,7 @@ async def test_review_triggers_absa_pipeline():
             "content": "Food is bad, service is slow, parking is terrible",
             "user_id": user_id,
             "business_id": business_id
-        })
+        }, headers=auth_header)
 
         assert review_res.status_code == 201
         review_id = review_res.json()["id"]

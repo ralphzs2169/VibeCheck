@@ -1,12 +1,15 @@
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException, status
 
+from backend.app.core.constants import DEFAULT_USER_ROLE
 from backend.app.models.user import User
 from backend.app.schemas.user import UserCreate, UserUpdate
+from backend.app.core.security import hash_password
 
 
 async def create_user(db: AsyncSession, user: UserCreate) -> User:
+    # Check for duplicate username
     result = await db.execute(
         select(User).where(User.username == user.username)
     )
@@ -21,7 +24,9 @@ async def create_user(db: AsyncSession, user: UserCreate) -> User:
     new_user = User(
         username=user.username,
         firstname=user.firstname,
-        lastname=user.lastname
+        lastname=user.lastname,
+        role=user.role or DEFAULT_USER_ROLE,
+        hashed_password=hash_password(user.password),  # FIXED: proper hashing
     )
 
     db.add(new_user)
@@ -46,10 +51,22 @@ async def get_user_or_404(db: AsyncSession, user_id: int) -> User:
     return user
 
 
-async def get_all_users(db: AsyncSession) -> list[User]:
+async def get_user_by_username(db: AsyncSession, username: str) -> User | None:
     result = await db.execute(
-        select(User)
+        select(User).where(User.username == username)
     )
+    return result.scalars().first()
+
+
+async def get_user_by_token(db: AsyncSession, token: str) -> User | None:
+    result = await db.execute(
+        select(User).where(User.token == token)
+    )
+    return result.scalars().first()
+
+
+async def get_users(db: AsyncSession) -> list[User]:
+    result = await db.execute(select(User))
     return result.scalars().all()
 
 
@@ -63,6 +80,7 @@ async def update_user(
 
     update_data = updated_user.model_dump(exclude_unset=True)
 
+    # username uniqueness check
     if "username" in update_data and update_data["username"] != user.username:
         result = await db.execute(
             select(User).where(User.username == update_data["username"])
@@ -75,6 +93,11 @@ async def update_user(
                 detail="Username already exists",
             )
 
+    # password hashing if updated
+    if "password" in update_data:
+        update_data["hashed_password"] = hash_password(update_data.pop("password"))
+
+    # apply updates
     for field, value in update_data.items():
         setattr(user, field, value)
 
@@ -84,8 +107,9 @@ async def update_user(
     return user
 
 
-async def delete_user(db: AsyncSession, user_id: int) -> None:
+async def delete_user(db: AsyncSession, user_id: int) -> bool:
     user = await get_user_or_404(db, user_id)
 
     await db.delete(user)
     await db.commit()
+    return True

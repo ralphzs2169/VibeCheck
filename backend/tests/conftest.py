@@ -110,3 +110,26 @@ async def client():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+
+
+# Helper to create a user with password (required for auth)
+async def create_test_user(client, username="testuser", firstname="Test", lastname="User", password="password123"):
+    """Helper function to create a user for tests"""
+    response = await client.post("/api/users", json={
+        "username": username,
+        "firstname": firstname,
+        "lastname": lastname,
+        "password": password
+    })
+    return response
+
+
+# Helper to login and get auth header
+async def login_and_get_header(client, username="testuser", password="password123"):
+    """Helper function to login and return Authorization header"""
+    response = await client.post("/api/auth/login", json={
+        "username": username,
+        "password": password
+    })
+    token = response.json().get("access_token")
+    return {"Authorization": f"Bearer {token}"}

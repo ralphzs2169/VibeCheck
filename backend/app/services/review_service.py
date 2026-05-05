@@ -11,8 +11,8 @@ from backend.app.services.absa_service import run_absa_for_review
 from backend.app.services.sentiment_service import analyze_sentiment
 
 
-async def create_review(db: AsyncSession, review: ReviewCreate, models: MLRegistry) -> Review:
-    existing_user = await user_service.get_user_or_404(db, review.user_id)
+async def create_review(db: AsyncSession, review: ReviewCreate,  user_id: int, models: MLRegistry) -> Review:
+    existing_user = await user_service.get_user_or_404(db, user_id)
     existing_business = await business_service.get_business_or_404(db, review.business_id)
 
     sentiment_score, sentiment_label, _ = analyze_sentiment(review.content, models.sentiment)

@@ -10,6 +10,7 @@ from backend.app.core.database import Base
     
 if TYPE_CHECKING:
     from backend.app.models.review import Review
+    from backend.app.models.business import Business 
 
 class User(Base):
     __tablename__ = "users"
@@ -18,6 +19,9 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     firstname: Mapped[str] = mapped_column(String(20), nullable=False)
     lastname: Mapped[str] = mapped_column(String(20), nullable=False)
+    role: Mapped[str] = mapped_column(String(20), default="reviewer", nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(128), nullable=False)
+    token: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(UTC)
@@ -33,4 +37,8 @@ class User(Base):
         "Review",
         back_populates="user",
         cascade="all, delete-orphan"
+    )
+
+    businesses: Mapped[list["Business"]] = relationship(
+        "Business", back_populates="owner"
     )
