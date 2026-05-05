@@ -102,3 +102,18 @@ VIBE_TREND_NEGATIVE_THRESHOLD = 2.5
 
 # Vibe volatility thresholds
 MIN_VIBE_VOLATILITY_POINTS = 5
+
+
+# --------------------------
+# Review Event Detection Constants
+# --------------------------
+
+EMA_ALPHA = 0.3
+
+Z_SCORE_SENTIMENT_THRESHOLD = 1.5
+Z_SCORE_VOLUME_THRESHOLD = 1.5
+
+CONFIDENCE_SENTIMENT_WEIGHT = 40
+CONFIDENCE_VOLUME_WEIGHT = 40
+
+MIN_SPIKE_DATA_POINTS = 3

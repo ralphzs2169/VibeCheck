@@ -155,5 +155,7 @@ async def get_dashboard(
         "temporal": await AnalyticsService.get_sentiment_over_time(db, business_id, "daily"),
         "forecast": await AnalyticsService.forecast_sentiment(db, business_id),
         "aspects": await AnalyticsService.get_business_aspect_summary(db, business_id),
+
+        "spike_analysis": await AnalyticsService.get_review_event_detection(db, business_id)
     }
 

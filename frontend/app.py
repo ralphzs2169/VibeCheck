@@ -48,6 +48,7 @@ peak_drop = dashboard.get("peak_drop", {})
 temporal = dashboard.get("temporal", {})
 forecast = dashboard.get("forecast", None)
 aspects = dashboard.get("aspects", {})
+spike_analysis = dashboard.get("spike_analysis", {})
 
 # -----------------------------
 # META HANDLING (NEW STANDARD)
@@ -352,3 +353,108 @@ if aspect_summary:
 
 else:
     st.info("No aspect analytics available.")
+
+# -----------------------------
+# SPIKE ANALYSIS (BUSINESS-FRIENDLY)
+# -----------------------------
+st.subheader("🚨 Business Activity Insights")
+
+spike = dashboard.get("spike_analysis", {})
+
+if spike:
+
+    event_type = spike.get("event_type", "no_anomaly")
+    confidence = spike.get("confidence", 0)
+
+    # -----------------------------
+    # HUMAN-FRIENDLY LABEL
+    # -----------------------------
+    if event_type == "no_anomaly":
+        label = "Normal Activity"
+        color = "🟢"
+        message = "Everything looks stable. No unusual activity detected."
+    elif event_type == "viral_positive":
+        label = "Positive Buzz"
+        color = "🟢🔥"
+        message = "Your business is getting unusually positive attention."
+    elif event_type == "viral_negative":
+        label = "Customer Issue Spike"
+        color = "🔴⚠️"
+        message = "There is a sudden rise in negative feedback. Something may need attention."
+    elif event_type == "promotion_spike":
+        label = "Promotion Impact"
+        color = "🟡📢"
+        message = "Increased activity likely caused by marketing or promotion."
+    else:
+        label = "Unusual Activity"
+        color = "🟡"
+        message = "Something unusual is happening, but it is unclear what caused it."
+
+    # -----------------------------
+    # TOP SUMMARY CARD
+    # -----------------------------
+    st.markdown(f"### {color} {label}")
+
+    st.write(message)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.metric(
+            "Confidence",
+            f"{confidence * 100:.0f}%"
+        )
+
+    with col2:
+        st.metric(
+            "Reviews Analyzed",
+            spike.get("meta", {}).get("sample_size", 0)
+        )
+
+    # -----------------------------
+    # SIMPLE EXPLANATION (NO STATS JARGON)
+    # -----------------------------
+    st.markdown("### 📊 What changed?")
+
+    sentiment_change = spike.get("sentiment_change", 0)
+    volume_ratio = spike.get("volume_ratio", 0)
+
+    if sentiment_change > 0:
+        sentiment_text = "Customers are feeling more positive than usual."
+    elif sentiment_change < 0:
+        sentiment_text = "Customers are feeling more negative than usual."
+    else:
+        sentiment_text = "Customer sentiment is stable."
+
+    if volume_ratio > 1:
+        volume_text = "More people are talking about your business than usual."
+    elif volume_ratio < 1:
+        volume_text = "Fewer people are talking about your business than usual."
+    else:
+        volume_text = "Normal level of activity."
+
+    st.write("• " + sentiment_text)
+    st.write("• " + volume_text)
+
+    # -----------------------------
+    # BUSINESS ACTIONS (VERY IMPORTANT)
+    # -----------------------------
+    st.markdown("### 💡 Suggested Actions")
+
+    if event_type == "viral_negative":
+        st.error("👉 Check recent complaints or service issues immediately")
+        st.error("👉 Respond to reviews quickly to prevent reputation damage")
+
+    elif event_type == "viral_positive":
+        st.success("👉 Engage with customers while attention is high")
+        st.success("👉 Highlight positive reviews on social media")
+
+    elif event_type == "promotion_spike":
+        st.info("👉 Promotion is working — consider extending it")
+        st.info("👉 Track which campaign caused the spike")
+
+    else:
+        st.info("👉 No action needed. Just keep monitoring performance.")
+
+else:
+    st.warning("No spike analysis available.")

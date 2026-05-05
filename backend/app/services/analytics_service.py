@@ -21,6 +21,12 @@ from backend.app.core.constants import (
     MIN_PEAK_DROP_POINTS,
     ABSA_NEGATIVE_THRESHOLD,
     ABSA_POSITIVE_THRESHOLD,
+    EMA_ALPHA,
+    Z_SCORE_SENTIMENT_THRESHOLD,
+    Z_SCORE_VOLUME_THRESHOLD,
+    CONFIDENCE_SENTIMENT_WEIGHT,
+    CONFIDENCE_VOLUME_WEIGHT,
+    MIN_SPIKE_DATA_POINTS,
 )
 from backend.app.models.aspect_sentiment import AspectSentiment
 from backend.app.models.review import Review
@@ -509,26 +515,111 @@ class AnalyticsService:
             )
         }
 
-
     @staticmethod
-    async def get_latest_vibe(db: AsyncSession, business_id: int):
-
-        # Get the most recent vibe snapshot for the business
+    async def get_review_event_detection(
+        db: AsyncSession,
+        business_id: int
+    ):
+        
+        # Aggregate average sentiment score and review count per day for the business
+        #  to create time series data for event detection
         stmt = (
-            select(VibeSnapshot)
-            .where(VibeSnapshot.business_id == business_id)
-            .order_by(VibeSnapshot.snapshot_date.desc())
-            .limit(1)
+            select(
+                func.date(Review.created_at).label("date"),
+                func.avg(Review.sentiment_score).label("avg_sentiment"),
+                func.count(Review.id).label("count")
+            )
+            .where(Review.business_id == business_id)
+            .group_by(func.date(Review.created_at))
+            .order_by(func.date(Review.created_at))
         )
 
         result = await db.execute(stmt)
-        row = result.scalar_one_or_none() 
+        rows = result.all()
 
-        if not row:
-            return {"status": "no_data"}
+        # Reliability check - need enough data points to perform meaningful spike detection
+        if len(rows) < MIN_SPIKE_DATA_POINTS:
+            return {
+                "event_type": "insufficient_data",
+                "confidence": 0,
+                "z_scores": {
+                    "sentiment_z": 0.0,
+                    "volume_z": 0.0
+                },
+                "interpretation": "Not enough data for reliable detection.",
+                "meta": AnalyticsMeta.reliability(len(rows), MIN_SPIKE_DATA_POINTS)
+            }
+
+        # Extract sentiment scores and review counts into separate arrays for analysis
+        sentiment = np.array([r.avg_sentiment or 0 for r in rows])
+        volume = np.array([r.count for r in rows])
+
+        # Exponential Moving Average (EMA) smoothing to identify underlying trends
+        #  and reduce noise in the time series data
+        def ema(series, alpha: float):
+            ema_values = [series[0]]
+            for i in range(1, len(series)):
+                ema_values.append(alpha * series[i] + (1 - alpha) * ema_values[-1])
+            return np.array(ema_values)
+
+        sentiment_ema = ema(sentiment, EMA_ALPHA)
+        volume_ema = ema(volume, EMA_ALPHA)
+
+        # Z-score calculation to identify significant deviations from the smoothed trend
+        def z_score(current, ema_series, series):
+            std = np.std(series) if np.std(series) > 0 else 1.0
+            return (current - ema_series) / std
+
+        sentiment_z = z_score(sentiment[-1], sentiment_ema[-1], sentiment)
+        volume_z = z_score(volume[-1], volume_ema[-1], volume)
+
+        # Determine if there is a significant spike in sentiment and/or volume based on z-score thresholds
+        sentiment_spike = abs(sentiment_z) > Z_SCORE_SENTIMENT_THRESHOLD
+        volume_spike = volume_z > Z_SCORE_VOLUME_THRESHOLD
+
+        if sentiment_spike and volume_spike:
+            event_type = "true_event"
+            interpretation = (
+                "Strong sentiment shift combined with increased activity suggests a viral or external event."
+            )
+
+        elif sentiment_spike:
+            event_type = "sentiment_only_spike"
+            interpretation = (
+                "Emotional shift detected without significant change in activity."
+            )
+
+        elif volume_spike:
+            event_type = "volume_only_spike"
+            interpretation = (
+                "Unusual activity detected without major sentiment change."
+            )
+
+        else:
+            event_type = "no_anomaly"
+            interpretation = "No abnormal sentiment or engagement spike detected."
+
+        # Confidence scoring based on magnitude of z-scores, giving more weight to sentiment spikes
+        #  as they are more indicative of vibe changes, but also considering volume spikes as they
+        #  can amplify the impact of sentiment shifts.
+        confidence_raw = (
+            (abs(sentiment_z) * CONFIDENCE_SENTIMENT_WEIGHT) +
+            (abs(volume_z) * CONFIDENCE_VOLUME_WEIGHT)
+        )
+
+        confidence = int(min(100, max(0, confidence_raw)))
 
         return {
-            "vibe_score": row.vibe_score,
-            "vibe_label": row.vibe_label,
-            "date": row.snapshot_date
+            "event_type": event_type,
+            "confidence": confidence,
+            "z_scores": {
+                "sentiment_z": float(sentiment_z),
+                "volume_z": float(volume_z)
+            },
+            "baseline": {
+                "sentiment_ema": float(sentiment_ema[-1]),
+                "volume_ema": float(volume_ema[-1])
+            },
+            "interpretation": interpretation,
+            "meta": AnalyticsMeta.reliability(len(rows), MIN_SPIKE_DATA_POINTS)
         }
