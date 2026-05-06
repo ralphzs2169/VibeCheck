@@ -14,7 +14,6 @@ function LoginForm({ onSubmit }) {
     
     try {
       await onSubmit(username, password);
-      setToast({ message: "Login successful!", type: "success" });
       setInvalidFields({});
     } catch (err) {
       let errorMessage = "Login failed";
@@ -47,12 +46,14 @@ function LoginForm({ onSubmit }) {
 
   return (
     <>
+      {/* // Display toast notifications for success or error messages */}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <form onSubmit={handleSubmit} className="w-full max-w-md" noValidate>
       <div className="mb-8">
         <h2 className="text-4xl font-bold text-gray-900 mb-3">Sign In</h2>
         <p className="text-gray-600 text-sm leading-relaxed">Access your resort reviews and personalized recommendations</p>
       </div>
+
 
       <div className="space-y-5">
         <div>
@@ -101,12 +102,23 @@ function LoginForm({ onSubmit }) {
         Sign In
       </button>
 
-      <p className="text-center text-gray-600 text-sm mt-6">
-        Don't have an account?{" "}
-        <Link to="/register" className="text-[#004687] hover:underline font-bold">
-          Create One Now
-        </Link>
-      </p>
+     <div className="mt-6 text-center space-y-3 text-sm">
+
+  <p className="text-gray-600">
+    Don’t have an account?{" "}
+    <Link to="/register" className="text-[#004687] font-semibold hover:underline">
+      Create account
+    </Link>
+  </p>
+
+  <p className="text-gray-600">
+    Own a resort?{" "}
+    <Link to="/register-business" className="text-[#004687] font-semibold hover:underline">
+      Register your resort
+    </Link>
+  </p>
+
+</div>
     </form>
     </>
   );

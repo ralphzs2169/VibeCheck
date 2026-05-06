@@ -110,30 +110,23 @@ def build_summary(
     llm_model: Any = None,
     use_ai_summary: bool = False
 ) -> str:
-    
-    vibe_score = convert_sentiment_to_vibe_score(score)
 
     insight_parts = []
     if positive_keywords:
-        insight_parts.append(f"Guests highlight {', '.join(positive_keywords[:2])}")
+        insight_parts.append(f"Guests frequently mention {', '.join(positive_keywords[:2])}")
     if negative_keywords:
-        insight_parts.append(f"Common concerns include {', '.join(negative_keywords[:2])}")
+        insight_parts.append(f"Some reviewers noted recurring concerns about {', '.join(negative_keywords[:2])}")
     if not insight_parts:
         insight_parts.append("No strong themes detected")
 
-    insight = ". ".join(p.capitalize() for p in insight_parts) + "."
+    summary = ". ".join(p.capitalize() for p in insight_parts) + "."
 
-    base_summary = (
-        f"Community sentiment is {label.lower()} "
-        f"with a vibe score of {vibe_score}/5.0 across {count} reviews. "
-        f"{insight}"
-    )
 
     if use_ai_summary:
         logger.info("Generating AI-enhanced summary")
-        return enhance_summary_with_llm(base_summary, llm_model)
+        return enhance_summary_with_llm(summary, llm_model)
 
-    return base_summary
+    return summary
 
 # LLM enhancement to rewrite the summary in a more natural, 
 # concise way while preserving all factual information

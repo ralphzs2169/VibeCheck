@@ -1,9 +1,12 @@
+# Activate: .\.venv\Scripts\Activate.ps1
 import logging
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from keybert import KeyBERT
 from openai import OpenAI
 from sentence_transformers import SentenceTransformer
@@ -18,11 +21,20 @@ from backend.app.routers import (
     analytics,
     auth,
     businesses,
+    homepage,
     reviews,
     users,
     vibe_snapshots,
 )
 
+# BASE_DIR is the parent directory of the current file's parent directory (i.e., the root of the project)
+BASE_DIR = Path(__file__).resolve().parent.parent 
+
+# Ensure uploads directory exists
+uploads_path = BASE_DIR / "uploads"
+uploads_path.mkdir(exist_ok=True)
+
+# Configure logging 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s - %(message)s"
@@ -110,12 +122,15 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 # Routes
+app.include_router(homepage.router, prefix="/api/homepage", tags=["homepage"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(reviews.router, prefix="/api/reviews", tags=["reviews"])
 app.include_router(businesses.router, prefix="/api/businesses", tags=["businesses"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
 app.include_router(vibe_snapshots.router, prefix="/api/vibe-snapshots", tags=["vibe_snapshots"])
+
+app.mount("/uploads", StaticFiles(directory=str(uploads_path)), name="uploads")
 
 @app.get("/")
 async def root():

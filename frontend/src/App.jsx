@@ -1,7 +1,10 @@
 import { Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import Home from "./pages/Home";
+import BusinessProfile from "./pages/BusinessProfile";
 import Navbar from "./components/Navbar.jsx";
+import OwnerRegister from "./pages/OwnerRegister.jsx";
 
 function App() {
   return (
@@ -9,9 +12,11 @@ function App() {
       <Navbar />
 
       <Routes>
-        <Route path="/" element={<div>Hello from router</div>} />
+        <Route path="/" element={<Home />} />
+        <Route path="/resort/:id" element={<BusinessProfile />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/register-business" element={<OwnerRegister />} />
       </Routes>
 
     </>

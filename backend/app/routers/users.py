@@ -24,9 +24,10 @@ router = APIRouter()
 )
 async def create_user(
     user: UserCreate,
-    db: Annotated[AsyncSession, Depends(get_db)]
+    db: AsyncSession = Depends(get_db),
 ):
     return await user_service.create_user(db, user)
+
 
 
 @router.get("/{user_id}", response_model=UserResponse)

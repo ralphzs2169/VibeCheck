@@ -19,17 +19,6 @@ async def get_vibe_snapshot_or_404(db: AsyncSession, snapshot_id: int) -> VibeSn
     return snapshot
 
 
-async def get_latest_vibe_for_business(db: AsyncSession, business_id: int) -> VibeSnapshot | None:
-    result = await db.execute(
-        select(VibeSnapshot)
-        .where(VibeSnapshot.business_id == business_id)
-        .order_by(VibeSnapshot.snapshot_date.desc())
-        .limit(1)
-    )
-    snapshot = result.scalars().first()
-    return snapshot
-
-
 async def get_vibe_snapshots_for_business(
     db: AsyncSession,
     business_id: int
@@ -75,12 +64,23 @@ async def create_vibe_snapshot(
         summary_text=data["summary_text"],
         snapshot_date=snapshot_date
     )
+    
 
     db.add(snapshot)
     await db.flush()
 
     return snapshot
 
+
+async def get_latest_vibe_snapshot(db: AsyncSession, business_id: int):
+    result = await db.execute(
+        select(VibeSnapshot)
+        .where(VibeSnapshot.business_id == business_id)
+        .order_by(VibeSnapshot.snapshot_date.desc())
+        .limit(1)
+    )
+
+    return result.scalars().first()
 
 async def run_vibe_snapshot_pipeline(
     db: AsyncSession,

@@ -82,7 +82,7 @@ function RegisterForm({ onSubmit }) {
               className={`w-full px-4 py-3 border rounded focus:outline-none focus:ring-2 focus:ring-[#004687] focus:border-transparent transition ${
                 invalidFields.firstname ? "border-red-500 ring-2 ring-red-500" : "border-gray-300"
               }`}
-              placeholder="First name (optional)"
+              placeholder="First name"
               value={firstname}
               onChange={(e) => setFirstname(e.target.value)}
               onClick={() => clearFieldError("firstname")}
@@ -94,24 +94,12 @@ function RegisterForm({ onSubmit }) {
               className={`w-full px-4 py-3 border rounded focus:outline-none focus:ring-2 focus:ring-[#004687] focus:border-transparent transition ${
                 invalidFields.lastname ? "border-red-500 ring-2 ring-red-500" : "border-gray-300"
               }`}
-              placeholder="Last name (optional)"
+              placeholder="Last name"
               value={lastname}
               onChange={(e) => setLastname(e.target.value)}
               onClick={() => clearFieldError("lastname")}
             />
           </div>
-        </div>
-
-        <div>
-          <label className="block text-gray-700 text-sm font-medium mb-2">Account Type</label>
-          <select
-            className="w-full px-4 py-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#004687] focus:border-transparent"
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-          >
-            <option value="reviewer">Reviewer</option>
-            <option value="merchant">Resort Owner</option>
-          </select>
         </div>
 
         <div>

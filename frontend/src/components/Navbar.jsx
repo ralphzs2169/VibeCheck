@@ -6,15 +6,22 @@ import About from "./icons/About";
 import Login from "./icons/Login";
 import Register from "./icons/Register";
 import Logout from "./icons/Logout";
+import UserAvatar from "./UserAvatar";
+import vibecheck_logo from '../assets/vibecheck_logo.png';
 
 function Navbar() {
   const location = useLocation();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     // Check if user is authenticated
     const token = localStorage.getItem("token");
+    const userData = localStorage.getItem("user");
     setIsAuthenticated(!!token);
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
   }, []);
 
   const isLoginPage = location.pathname === "/login";
@@ -25,7 +32,8 @@ function Navbar() {
       {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 w-full flex items-center justify-between px-6 md:px-12 py-4 bg-white border-b border-gray-100 shadow-sm z-50">
         {/* LEFT: Brand */}
-        <Link to="/" className="text-2xl font-bold text-[#004687] hover:opacity-80 transition">
+        <Link to="/" className="flex items-center gap-2 text-2xl font-bold text-[#004687] hover:opacity-80 transition">
+          <img src={vibecheck_logo} alt="VibeCheck Logo" className="w-9 h-9" />
           VibeCheck
         </Link>
 
@@ -76,18 +84,26 @@ function Navbar() {
             </Link>
           )}
 
-          {isAuthenticated && (
-            <button
-              onClick={() => {
-                localStorage.removeItem("token");
-                setIsAuthenticated(false);
-                window.location.href = "/";
-              }}
-              className="px-5 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded hover:bg-gray-50 hover:border-gray-400 transition group flex items-center gap-2"
-            >
-              <Logout className="w-4 h-4" />
-              Logout
-            </button>
+          {isAuthenticated && user && (
+            <div className="flex items-center gap-3">
+              <UserAvatar firstName={user.firstname} lastName={user.lastname} />
+              <span className="text-sm font-medium text-gray-900">
+                {user.lastname}, {user.firstname}
+              </span>
+              <button
+                onClick={() => {
+                  localStorage.removeItem("token");
+                  localStorage.removeItem("user");
+                  setIsAuthenticated(false);
+                  setUser(null);
+                  window.location.href = "/login";
+                }}
+                className="px-5 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded hover:bg-gray-50 hover:border-gray-400 transition group flex items-center gap-2"
+              >
+                <Logout className="w-4 h-4" />
+                Logout
+              </button>
+            </div>
           )}
         </div>
       </nav>

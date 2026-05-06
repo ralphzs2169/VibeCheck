@@ -11,9 +11,14 @@ export default function Login() {
 
     // store token
     localStorage.setItem("token", data.access_token);
+    
+    // store user data if available
+    if (data.user) {
+      localStorage.setItem("user", JSON.stringify(data.user));
+    }
 
     // redirect after login
-    navigate("/dashboard");
+    navigate("/");
   };
 
   return (

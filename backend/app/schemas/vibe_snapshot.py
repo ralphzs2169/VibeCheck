@@ -22,3 +22,14 @@ class VibeSnapshotResponse(VibeSnapshotBase):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class VibeSnapshotMiniResponse(BaseModel):
+    vibe_score: float
+    vibe_label: str
+    review_count: int
+    summary_text: str
+    positive_count: int
+    mixed_count: int
+    negative_count: int
+    

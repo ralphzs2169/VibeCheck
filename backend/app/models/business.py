@@ -8,12 +8,13 @@ from sqlalchemy import DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.core.database import Base
+from backend.app.models.review import Review
 
 if TYPE_CHECKING:
     from backend.app.models.user import User
-    from backend.app.models.user import Review
     from backend.app.models.vibe_snapshot import VibeSnapshot
-    
+
+
 class Business(Base):
     __tablename__ = "businesses"
 
@@ -23,10 +24,7 @@ class Business(Base):
     short_description: Mapped[str] = mapped_column(String(255), nullable=False)
     image_path: Mapped[str] = mapped_column(String(255), nullable=True)
 
-    
-    owner_id: Mapped[int | None] = mapped_column(
-        ForeignKey("users.id"), nullable=True
-    )
+    owner_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(UTC)
@@ -39,16 +37,16 @@ class Business(Base):
     )
 
     # Establish relationship with Review (reviews for the business)
-    owner: Mapped["User | None"] = relationship(
-        "User", back_populates="businesses"
-    )
+    owner: Mapped["User | None"] = relationship("User", back_populates="businesses")
 
     reviews: Mapped[list["Review"]] = relationship(
-        "Review", back_populates="business", cascade="all, delete-orphan"
+        "Review",
+        back_populates="business",
+        cascade="all, delete-orphan",
+        order_by=lambda: Review.created_at.desc()
     )
 
     # Establish relationship with VibeSnapshot (vibe snapshots for the business)
     vibe_snapshots: Mapped[list["VibeSnapshot"]] = relationship(
         "VibeSnapshot", back_populates="business", cascade="all, delete-orphan"
     )
-

@@ -16,8 +16,8 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     username: str | None = Field(None, min_length=4, max_length=50)
-    firstname: str | None = Field(None, max_length=20)
-    lastname: str | None = Field(None, max_length=20)
+    firstname: str | None = Field(None, min_length=2, max_length=20)
+    lastname: str | None = Field(None, min_length=2, max_length=20)
     role: Literal["merchant", "reviewer"] | None = Field(None)
     password: str | None = Field(None, min_length=8, max_length=128)
 
@@ -27,10 +27,6 @@ class UserLogin(BaseModel):
     password: str = Field(..., min_length=8, max_length=128)
 
 
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str
-
 
 class UserResponse(UserBase):
     id: int
@@ -38,4 +34,19 @@ class UserResponse(UserBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserMiniResponse(BaseModel):
+    id: int
+    username: str
+    firstname: str | None
+    lastname: str | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str
+    user: UserMiniResponse
 

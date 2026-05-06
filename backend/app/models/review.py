@@ -32,7 +32,8 @@ class Review(Base):
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     business_id: Mapped[int] = mapped_column(
-        ForeignKey("businesses.id"), nullable=False
+        ForeignKey("businesses.id"), nullable=False,
+        index=True
     )
 
     # Establish relationship with User (author of the review)

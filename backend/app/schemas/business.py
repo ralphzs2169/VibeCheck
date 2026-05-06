@@ -2,6 +2,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.app.schemas.review import ReviewResponse
+from backend.app.schemas.vibe_snapshot import VibeSnapshotMiniResponse
 
 class BusinessBase(BaseModel):
     name: str = Field(..., max_length=100)
@@ -23,7 +24,10 @@ class BusinessResponse(BusinessBase):
     created_at: datetime
     updated_at: datetime
 
+    image_path: str | None = None   # just expose it
+
+    latest_vibe: VibeSnapshotMiniResponse | None = None
+    reviews: list[ReviewResponse]
+
     model_config = ConfigDict(from_attributes=True)
 
-class BusinessWithReviewsResponse(BusinessResponse):
-    reviews: list[ReviewResponse] = Field(default_factory=list)

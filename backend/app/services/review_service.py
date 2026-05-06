@@ -1,6 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 import backend.app.services.business_service as business_service
 import backend.app.services.user_service as user_service
@@ -34,8 +35,18 @@ async def create_review(db: AsyncSession, review: ReviewCreate,  user_id: int, m
 
     await db.commit()
     await db.refresh(new_review)
+
+    # Fetch the review again to include related user and aspect sentiments for the response
+    result = await db.execute(
+        select(Review)
+        .where(Review.id == new_review.id)
+        .options(
+            selectinload(Review.user),
+            selectinload(Review.aspect_sentiments),
+        )
+    )
     
-    return new_review
+    return result.scalars().first()
 
 
 async def get_review_or_404(db: AsyncSession, review_id: int) -> Review:

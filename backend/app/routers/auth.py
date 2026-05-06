@@ -1,18 +1,24 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import os
+import uuid
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import backend.app.services.auth_service as auth_service
 import backend.app.services.user_service as user_service
+import backend.app.services.business_service as business_service
 from backend.app.core.database import get_db
 from backend.app.models.user import User
+from backend.app.schemas.business import BusinessCreate
 from backend.app.schemas.user import (
     TokenResponse,
     UserCreate,
     UserLogin,
     UserResponse,
 )
+
 
 router = APIRouter()
 
@@ -37,7 +43,8 @@ async def login(
 
     return {
         "access_token": result,
-        "token_type": "bearer"
+        "token_type": "bearer",
+        "user": await user_service.get_user_by_username(db, credentials.username)
     }
 
 
@@ -53,8 +60,65 @@ async def register(
 async def read_current_user(
     current_user: User = Depends(auth_service.get_authenticated_user),
 ):
-    print("ROUTER HIT")
     return current_user
+
+
+@router.post("/owner/register")
+# Using Form and File parameters instead of a Pydantic model for multipart/form-data handling
+async def register_owner(
+    username: str = Form(...),
+    firstname: str | None = Form(None),
+    lastname: str | None = Form(None),
+    password: str = Form(...),
+    business_name: str = Form(...),
+    location: str = Form(...),
+    short_description: str = Form(...),
+    image: UploadFile | None = File(None),
+    db: AsyncSession = Depends(get_db)
+):
+    user_payload = UserCreate(
+        username=username,
+        firstname=firstname,
+        lastname=lastname,
+        role="merchant",
+        password=password,
+    )
+
+    image_path = None
+    # Handle file upload if an image is provided
+    if image:
+        uploads_dir = "uploads"
+        os.makedirs(uploads_dir, exist_ok=True)
+        _, ext = os.path.splitext(image.filename or "")
+        ext = ext.lower() if ext else ".png"
+        filename = f"{uuid.uuid4().hex}{ext}"
+        file_path = os.path.join(uploads_dir, filename)
+
+        contents = await image.read()
+        with open(file_path, "wb") as f:
+            f.write(contents)
+
+        image_path = f"/uploads/{filename}"
+
+    user = await user_service.create_user(db, user_payload)
+
+    business_payload = {
+        "name": business_name,
+        "location": location,
+        "short_description": short_description,
+        "image_path": image_path,
+    }
+
+    business = await business_service.create_business(
+        db,
+        BusinessCreate(**business_payload),
+        owner_id=user.id
+    )
+
+    return {
+        "user": user,
+        "business": business
+    }
 
 
 @router.post("/logout")

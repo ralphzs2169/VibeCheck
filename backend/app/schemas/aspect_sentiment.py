@@ -19,3 +19,7 @@ class AspectSentimentResponse(AspectSentimentBase):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+class AspectMiniResponse(BaseModel):
+    aspect: str
+    sentiment_label: str

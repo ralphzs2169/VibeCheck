@@ -1,11 +1,13 @@
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
+from backend.app.schemas.aspect_sentiment import AspectMiniResponse
+from backend.app.schemas.user import UserMiniResponse
+
 class ReviewBase(BaseModel):
     content: str = Field(..., max_length=500)
 
 class ReviewCreate(ReviewBase):
-    user_id: int = Field(..., gt=0) #modify later with actual user_id from auth
     business_id: int = Field(..., gt=0)
 
 class ReviewUpdate(ReviewBase):
@@ -22,5 +24,8 @@ class ReviewResponse(ReviewBase):
 
     user_id: int
     business_id: int
+
+    user: UserMiniResponse
+    aspect_sentiments: list[AspectMiniResponse]
 
     model_config = ConfigDict(from_attributes=True)
