@@ -45,7 +45,7 @@ async def lifespan(app: FastAPI):
     # Database Initialization
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-
+    
     # ML model loading
     sentiment_model = pipeline(
         "sentiment-analysis",
@@ -108,7 +108,6 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-
 
 # Routes
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])

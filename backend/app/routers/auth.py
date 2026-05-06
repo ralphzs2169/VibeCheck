@@ -4,10 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import backend.app.services.auth_service as auth_service
+import backend.app.services.user_service as user_service
 from backend.app.core.database import get_db
 from backend.app.models.user import User
 from backend.app.schemas.user import (
     TokenResponse,
+    UserCreate,
     UserLogin,
     UserResponse,
 )
@@ -37,6 +39,14 @@ async def login(
         "access_token": result,
         "token_type": "bearer"
     }
+
+
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def register(
+    user: UserCreate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    return await user_service.create_user(db, user)
 
 
 @router.get("/me", response_model=UserResponse)
