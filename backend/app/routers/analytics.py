@@ -7,6 +7,12 @@ from backend.app.services.analytics_service import AnalyticsService
 
 router = APIRouter()
 
+# @router.get("/business/insights/most_positive")
+# async def get_most_positive_businesses(
+#     db: AsyncSession = Depends(get_db)
+# ):
+#     return await AnalyticsService.get_most_positive_businesses(db)
+
 
 @router.get("/business/{business_id}/sentiment-over-time")
 async def get_sentiment_over_time(

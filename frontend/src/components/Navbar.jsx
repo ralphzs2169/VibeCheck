@@ -14,6 +14,9 @@ function Navbar() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
 
+  const isOwner = user?.role === "owner";
+
+
   useEffect(() => {
     // Check if user is authenticated
     const token = localStorage.getItem("token");
@@ -22,6 +25,27 @@ function Navbar() {
     if (userData) {
       setUser(JSON.parse(userData));
     }
+  }, []);
+
+  useEffect(() => {
+    const handleAuthChange = () => {
+      const token = localStorage.getItem("token");
+      const userData = localStorage.getItem("user");
+      setIsAuthenticated(!!token);
+      if (userData) {
+        setUser(JSON.parse(userData));
+      } else {
+        setUser(null);
+      }
+    };
+
+    window.addEventListener('login', handleAuthChange);
+    window.addEventListener('logout', handleAuthChange);
+
+    return () => {
+      window.removeEventListener('login', handleAuthChange);
+      window.removeEventListener('logout', handleAuthChange);
+    };
   }, []);
 
   const isLoginPage = location.pathname === "/login";
@@ -38,29 +62,31 @@ function Navbar() {
         </Link>
 
         {/* MIDDLE: Navigation Links */}
-        <div className="hidden md:flex gap-10 items-center">
-          <Link 
-            to="/" 
-            className="flex items-center gap-2 text-gray-700 font-medium hover:text-[#004687] transition group"
-          >
-            <Home className="w-5 h-5 group-hover:text-[#004687]" />
-            Home
-          </Link>
-          <Link 
-            to="/services" 
-            className="flex items-center gap-2 text-gray-700 font-medium hover:text-[#004687] transition group"
-          >
-            <Services className="w-5 h-5 group-hover:text-[#004687]" />
-            Services
-          </Link>
-          <Link 
-            to="/about" 
-            className="flex items-center gap-2 text-gray-700 font-medium hover:text-[#004687] transition group"
-          >
-            <About className="w-5 h-5 group-hover:text-[#004687]" />
-            About
-          </Link>
-        </div>
+        {!isOwner && (
+          <div className="hidden md:flex gap-10 items-center">
+            <Link 
+              to="/" 
+              className="flex items-center gap-2 text-gray-700 font-medium hover:text-[#004687] transition group"
+            >
+              <Home className="w-5 h-5 group-hover:text-[#004687]" />
+              Home
+            </Link>
+            <Link 
+              to="/services" 
+              className="flex items-center gap-2 text-gray-700 font-medium hover:text-[#004687] transition group"
+            >
+              <Services className="w-5 h-5 group-hover:text-[#004687]" />
+              Services
+            </Link>
+            <Link 
+              to="/about" 
+              className="flex items-center gap-2 text-gray-700 font-medium hover:text-[#004687] transition group"
+            >
+              <About className="w-5 h-5 group-hover:text-[#004687]" />
+              About
+            </Link>
+          </div>
+        )}
 
         {/* RIGHT: Auth Links */}
         <div className="flex gap-3 items-center">
@@ -96,6 +122,7 @@ function Navbar() {
                   localStorage.removeItem("user");
                   setIsAuthenticated(false);
                   setUser(null);
+                  window.dispatchEvent(new CustomEvent('logout'));
                   window.location.href = "/login";
                 }}
                 className="px-5 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded hover:bg-gray-50 hover:border-gray-400 transition group flex items-center gap-2"

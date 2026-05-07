@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+import logging
 
 from backend.app.core.ml_registry import MLRegistry
 from backend.app.models.business import Business
@@ -55,6 +56,11 @@ async def get_business_or_404(db: AsyncSession, business_id: int) -> Business:
         )
 
     return business
+
+
+async def get_business_by_id(db: AsyncSession, business_id: int) -> Business | None:
+    result = await db.execute(select(Business).where(Business.id == business_id))
+    return result.scalars().first()
 
 
 async def get_all_businesses(db: AsyncSession) -> list[Business]:
@@ -117,6 +123,30 @@ async def get_business_homepage_feed(db: AsyncSession):
         })
 
     return response_data
+
+
+logger = logging.getLogger(__name__)
+async def verify_business_ownership(
+    db: AsyncSession,
+    business_id: int,
+    user_id: int
+) -> Business:
+    logger.info(f"Verifying ownership for user {user_id} on business {business_id}")
+    business = await get_business_by_id(db, business_id)
+
+    if not business:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Business not found"
+        )
+
+    if business.owner_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized"
+        )
+
+    return business
 
 
 async def update_business(

@@ -33,12 +33,16 @@ class User(Base):
         onupdate=lambda: datetime.now(UTC),
     )
 
+    # Establish relationship with Review (reviews written by the user)
     reviews: Mapped[list["Review"]] = relationship(
         "Review",
         back_populates="user",
         cascade="all, delete-orphan"
     )
 
-    businesses: Mapped[list["Business"]] = relationship(
-        "Business", back_populates="owner"
+    # Establish relationship with Business (business owned by the user)
+    business = relationship(
+        "Business",
+        back_populates="owner",
+        uselist=False
     )

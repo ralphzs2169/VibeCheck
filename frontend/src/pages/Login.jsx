@@ -17,8 +17,16 @@ export default function Login() {
       localStorage.setItem("user", JSON.stringify(data.user));
     }
 
+    // dispatch login event to trigger navbar re-render
+    window.dispatchEvent(new CustomEvent('login'));
+
     // redirect after login
-    navigate("/");
+
+    if (data.user.role === "owner") {
+      navigate(`/business/dashboard`); 
+    } else {
+      navigate("/");
+    }
   };
 
   return (

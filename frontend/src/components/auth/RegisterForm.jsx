@@ -7,7 +7,6 @@ function RegisterForm({ onSubmit }) {
   const [username, setUsername] = useState("");
   const [firstname, setFirstname] = useState("");
   const [lastname, setLastname] = useState("");
-  const [role, setRole] = useState("reviewer");
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -28,7 +27,7 @@ function RegisterForm({ onSubmit }) {
         username,
         firstname: firstname || null,
         lastname: lastname || null,
-        role,
+        role: "reviewer",
         password,
       });
       setInvalidFields({});

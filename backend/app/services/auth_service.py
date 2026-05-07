@@ -3,7 +3,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from sqlalchemy.orm import selectinload
 from backend.app.core.database import get_db
 from backend.app.core.security import generate_access_token, verify_password
 from backend.app.models.user import User
@@ -42,12 +42,10 @@ async def get_authenticated_user(
     db: AsyncSession = Depends(get_db),
 ) -> User:
 
-    logger.info("AUTH HEADER: %s", credentials)
-
     token = credentials.credentials
 
     result = await db.execute(
-        select(User).where(User.token == token)
+        select(User).options(selectinload(User.business)).where(User.token == token)
     )
 
     user = result.scalars().first()

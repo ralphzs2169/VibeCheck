@@ -7,7 +7,7 @@ class UserBase(BaseModel):
     username: str = Field(..., min_length=4,max_length=50)
     firstname: str | None = Field(None, max_length=20)
     lastname: str | None = Field(None, max_length=20)
-    role: Literal["merchant", "reviewer"] = Field("reviewer")
+    role: Literal["owner", "reviewer"] = Field("reviewer")
 
 
 class UserCreate(UserBase):
@@ -18,14 +18,13 @@ class UserUpdate(BaseModel):
     username: str | None = Field(None, min_length=4, max_length=50)
     firstname: str | None = Field(None, min_length=2, max_length=20)
     lastname: str | None = Field(None, min_length=2, max_length=20)
-    role: Literal["merchant", "reviewer"] | None = Field(None)
+    role: Literal["owner", "reviewer"] | None = Field(None)
     password: str | None = Field(None, min_length=8, max_length=128)
 
 
 class UserLogin(BaseModel):
     username: str = Field(..., min_length=4, max_length=50)
     password: str = Field(..., min_length=8, max_length=128)
-
 
 
 class UserResponse(UserBase):
@@ -41,6 +40,8 @@ class UserMiniResponse(BaseModel):
     username: str
     firstname: str | None
     lastname: str | None
+    role: Literal["owner", "reviewer"]
+    business_id: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

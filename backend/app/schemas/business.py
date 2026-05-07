@@ -24,10 +24,12 @@ class BusinessResponse(BusinessBase):
     created_at: datetime
     updated_at: datetime
 
-    image_path: str | None = None   # just expose it
+    image_path: str | None = None  
 
     latest_vibe: VibeSnapshotMiniResponse | None = None
     reviews: list[ReviewResponse]
 
     model_config = ConfigDict(from_attributes=True)
+
+
 

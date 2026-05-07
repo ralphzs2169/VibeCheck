@@ -22,14 +22,13 @@ function ProfileContent({ reviews, latestVibe }) {
     <main className="flex-1 flex flex-col overflow-hidden w-full h-full">
 
       {/* Fixed Summary */}
-      {latestVibe?.summary_text && (
+
         <div className="flex-shrink-0 px-6 pt-6 pb-4 max-w-4xl w-full mx-auto">
           <VibeSummaryCard
             summary={latestVibe.summary_text}
             reviewCount={reviewCount}
           />
         </div>
-      )}
 
     {/* Scrollable Reviews Container — no longer scrolls */}
     <div className="flex-1 overflow-hidden">

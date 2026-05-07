@@ -16,6 +16,7 @@ from backend.app.schemas.user import (
     TokenResponse,
     UserCreate,
     UserLogin,
+    UserMiniResponse,
     UserResponse,
 )
 
@@ -41,10 +42,17 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    user_obj = await user_service.get_user_by_username(db, credentials.username)
+
+    business_id = user_obj.business.id if user_obj.business else None
+
     return {
         "access_token": result,
         "token_type": "bearer",
-        "user": await user_service.get_user_by_username(db, credentials.username)
+        "user": {
+            **UserMiniResponse.model_validate(user_obj).model_dump(),
+            "business_id": business_id
+        }
     }
 
 
@@ -80,7 +88,7 @@ async def register_owner(
         username=username,
         firstname=firstname,
         lastname=lastname,
-        role="merchant",
+        role="owner",
         password=password,
     )
 

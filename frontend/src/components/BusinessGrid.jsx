@@ -1,6 +1,6 @@
-import ResortCard from './ResortCard';
+import BusinessCard from "./BusinessCard";
 
-export default function ResortGrid({ resorts, vibeDataMap, isLoading, error }) {
+export default function BusinessGrid({ businesses, vibeDataMap, isLoading, error }) {
   if (error) {
     return (
       <div className="text-center py-12">
@@ -28,7 +28,7 @@ export default function ResortGrid({ resorts, vibeDataMap, isLoading, error }) {
     );
   }
 
-  if (!resorts || resorts.length === 0) {
+  if (!businesses || businesses.length === 0) {
     return (
       <div className="text-center py-12">
         <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -47,11 +47,12 @@ export default function ResortGrid({ resorts, vibeDataMap, isLoading, error }) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {resorts.map((resort) => (
-        <ResortCard
-          key={resort.id}
-          resort={resort}
-          vibeData={vibeDataMap[resort.id] || {}}
+      {businesses.map((business) => (
+       
+        <BusinessCard
+          key={business.id}
+          business={business}
+          vibeData={vibeDataMap[business.id] || {}}
         />
       ))}
     </div>

@@ -24,7 +24,7 @@ class Business(Base):
     short_description: Mapped[str] = mapped_column(String(255), nullable=False)
     image_path: Mapped[str] = mapped_column(String(255), nullable=True)
 
-    owner_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(UTC)
@@ -37,7 +37,7 @@ class Business(Base):
     )
 
     # Establish relationship with Review (reviews for the business)
-    owner: Mapped["User | None"] = relationship("User", back_populates="businesses")
+    owner: Mapped["User | None"] = relationship("User", back_populates="business")
 
     reviews: Mapped[list["Review"]] = relationship(
         "Review",

@@ -6,6 +6,7 @@ from backend.app.core.constants import DEFAULT_USER_ROLE
 from backend.app.models.user import User
 from backend.app.schemas.user import UserCreate, UserUpdate
 from backend.app.core.security import hash_password
+from sqlalchemy.orm import selectinload
 
 
 async def create_user(db: AsyncSession, user: UserCreate) -> User:
@@ -26,7 +27,7 @@ async def create_user(db: AsyncSession, user: UserCreate) -> User:
         firstname=user.firstname,
         lastname=user.lastname,
         role=user.role or DEFAULT_USER_ROLE,
-        hashed_password=hash_password(user.password),  # FIXED: proper hashing
+        hashed_password=hash_password(user.password),
     )
 
     db.add(new_user)
@@ -53,7 +54,9 @@ async def get_user_or_404(db: AsyncSession, user_id: int) -> User:
 
 async def get_user_by_username(db: AsyncSession, username: str) -> User | None:
     result = await db.execute(
-        select(User).where(User.username == username)
+        select(User)
+        .options(selectinload(User.business))
+        .where(User.username == username)
     )
     return result.scalars().first()
 

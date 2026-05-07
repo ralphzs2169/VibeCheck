@@ -1,9 +1,11 @@
 import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.models.user import User
+from backend.app.services import auth_service
 import backend.app.services.business_service as business_service
 from backend.app.core.database import get_db
 from backend.app.core.dependencies import get_models
@@ -101,19 +103,33 @@ async def get_business_profile(
 # -------------------------
 # BUSINESS ANALYTICS ROUTES
 # -------------------------
-@router.get("/{business_id}/analytics")
-@router.get("/{business_id}/dashboard")
+@router.get("/analytics/{business_id}")
+@router.get("/dashboard")
 async def get_dashboard(
-    business_id: int,
+    business_id: int | None = None,
     db: AsyncSession = Depends(get_db),
-    request: Request = None
+    current_user: User = Depends(auth_service.get_authenticated_user),
 ):
-    models = request.app.state.models if request else None
+
+    if business_id is None:
+        if not current_user.business:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No business found for user"
+            )
+        business_id = current_user.business.id
+
+    # verify ownership before doing any analytics work
+    await business_service.verify_business_ownership(
+        db,
+        business_id,
+        current_user.id
+    )
+
     return {
-        # -------------------------
-        # VIBE LAYER (PRIMARY)
-        # -------------------------
-        "latest_vibe": await business_service.get_business_latest_vibe(db, business_id, models),
+
+        "profile": await business_service.get_business_profile(db, business_id),
+
         "vibe_trend": await AnalyticsService.get_vibe_score_trend(db, business_id),
         "vibe_volatility": await AnalyticsService.get_vibe_volatility(db, business_id),
 
