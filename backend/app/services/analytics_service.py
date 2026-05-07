@@ -4,33 +4,40 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.constants import (
+    ABSA_NEGATIVE_THRESHOLD,
+    ABSA_POSITIVE_THRESHOLD,
+    CONFIDENCE_SENTIMENT_WEIGHT,
+    CONFIDENCE_VOLUME_WEIGHT,
+    EMA_ALPHA,
     MIN_ASPECT_COUNT,
+    MIN_PEAK_DROP_POINTS,
     MIN_SENTIMENT_DISTRIBUTION_REVIEWS,
-    MIN_SENTIMENT_FORECAST_POINTS,
+    MIN_VIBE_FORECAST_POINTS,
     MIN_SENTIMENT_TIMESERIES_POINTS,
     MIN_SENTIMENT_TREND_POINTS,
     MIN_SENTIMENT_VOLATILITY_POINTS,
-    MIN_VIBE_VOLATILITY_POINTS,
+    MIN_SPIKE_DATA_POINTS,
     MIN_VIBE_TIMESERIES_POINTS,
     MIN_VIBE_TREND_POINTS,
+    MIN_VIBE_VOLATILITY_POINTS,
+    SENTIMENT_TREND_NEGATIVE_THRESHOLD,
+    SENTIMENT_TREND_POSITIVE_THRESHOLD,
     VIBE_TREND_NEGATIVE_SLOPE_THRESHOLD,
     VIBE_TREND_POSITIVE_SLOPE_THRESHOLD,
-    SENTIMENT_TREND_POSITIVE_THRESHOLD,
-    SENTIMENT_TREND_NEGATIVE_THRESHOLD,
     VOLATILITY_STABLE_THRESHOLD,
-    MIN_PEAK_DROP_POINTS,
-    ABSA_NEGATIVE_THRESHOLD,
-    ABSA_POSITIVE_THRESHOLD,
-    EMA_ALPHA,
     Z_SCORE_SENTIMENT_THRESHOLD,
     Z_SCORE_VOLUME_THRESHOLD,
-    CONFIDENCE_SENTIMENT_WEIGHT,
-    CONFIDENCE_VOLUME_WEIGHT,
-    MIN_SPIKE_DATA_POINTS,
+    FUTURE_FORECAST_MONTHS,
+    MIN_VIBE_SCORE,
+    MAX_VIBE_SCORE,
+    VIBE_POSITIVE_THRESHOLD,
+    VIBE_NEGATIVE_THRESHOLD
 )
+from backend.app.core.mappers import map_business_health_label, map_consistency, map_confidence
 from backend.app.models.aspect_sentiment import AspectSentiment
 from backend.app.models.review import Review
 from backend.app.models.vibe_snapshot import VibeSnapshot
+
 
 
 # Meta class for analytics reliability checks
@@ -45,18 +52,121 @@ class AnalyticsMeta:
     
 
 class AnalyticsService:
-    
+
+    @staticmethod
+    async def compute_business_health(
+        vibe_score: float,
+        trend: str,
+        aspects: dict,
+        review_count: int
+    ):
+        """
+        Computes business health using raw signals + UX mapping layer.
+        """
+
+        # -------------------------
+        # 1. VIBE SCORE (raw + normalized)
+        # -------------------------
+        raw_vibe = vibe_score  # keep original (e.g. 4.3 / 5)
+        vibe_norm = (vibe_score - 1) / 4
+        vibe_norm = max(0, min(1, vibe_norm))
+
+        # -------------------------
+        # 2. TREND SCORE
+        # -------------------------
+        trend_map = {
+            "improving": 1,
+            "stable": 0,
+            "declining": -1
+        }
+
+        trend_raw = trend_map.get(trend, 0)
+        trend_norm = (trend_raw + 1) / 2
+
+        # -------------------------
+        # 3. ASPECT CONSISTENCY
+        # -------------------------
+        aspect_values = [
+            aspect["avg_score"]
+            for aspect in aspects.values()
+            if isinstance(aspect, dict) and "avg_score" in aspect
+        ]
+
+        if aspect_values:
+            norm_vals = [(v + 1) / 2 for v in aspect_values]
+            spread = np.std(norm_vals)
+            consistency = 1 / (1 + spread)
+        else:
+            consistency = 0.5
+
+        consistency = max(0, min(1, consistency))
+
+        # -------------------------
+        # 4. CONFIDENCE
+        # -------------------------
+        confidence = min(review_count / 100, 1)
+
+        # -------------------------
+        # 5. FINAL SCORE (0–1)
+        # -------------------------
+        score = (
+            vibe_norm * 0.4 +
+            trend_norm * 0.25 +
+            consistency * 0.2 +
+            confidence * 0.15
+        )
+
+        score = max(0, min(1, score))
+
+        # -------------------------
+        # 6. UX MAPPING (NOW USED CORRECTLY)
+        # -------------------------
+        vibe_label = map_business_health_label(score)
+        consistency_label = map_consistency(consistency)
+        confidence_label = map_confidence(confidence)
+
+        # -------------------------
+        # RETURN
+        # -------------------------
+        return {
+            "score": float(score),
+
+            # raw + normalized signals (IMPORTANT for UI clarity)
+            "raw": {
+                "vibe_score": raw_vibe
+            },
+
+            "label": vibe_label["label"],
+
+            "breakdown": {
+                "vibe": float(vibe_norm),
+                "trend": float(trend_norm),
+                "consistency": float(consistency),
+                "confidence": float(confidence)
+            },
+
+            # UX enrichment layer (THIS is what frontend should show in tooltips)
+            "insights": {
+                "consistency": consistency_label,
+                "confidence": confidence_label,
+                "health": vibe_label
+            }
+        }
+        
     # --------------------------
     # SENTIMENT ANALYTICS
     # --------------------------
 
     @staticmethod
-    # sentiment aggregation over time (daily/weekly/monthly)
     async def get_sentiment_over_time(
         db: AsyncSession,
         business_id: int,
         granularity: str
     ):
+        """
+        Aggregates average sentiment score and review count over time for a business,
+        grouped by the specified granularity (daily, weekly, monthly). This provides    
+        """
         if granularity == "daily":
             bucket = func.date(Review.created_at)
 
@@ -281,48 +391,111 @@ class AnalyticsService:
     
 
     @staticmethod
-    # sentiment forecasting (predicting future sentiment score and vibe based on historical trends)
-    async def forecast_sentiment(db: AsyncSession, business_id: int):
+    async def forecast_vibe_score(db: AsyncSession, business_id: int):
+        """
+        Forecast future vibe score using linear regression on historical monthly vibe scores.
 
-        # Get monthly sentiment averages over time
-        response = await AnalyticsService.get_sentiment_over_time(
+        Returns:
+        - historical vibe score trend
+        - 6-month forecast
+        - predicted vibe classification
+        """
+
+        # -------------------------
+        # FETCH HISTORICAL DATA
+        # -------------------------
+        response = await AnalyticsService.get_vibe_score_over_time(
             db,
             business_id,
             "monthly"
         )
 
-        data = response["data"]
+        data = response.get("data", [])
 
-        # Minimum data check for reliable forecasting
-        if len(data) < MIN_SENTIMENT_FORECAST_POINTS:
+        # -------------------------
+        # VALIDATION
+        # -------------------------
+        if len(data) < MIN_VIBE_FORECAST_POINTS:
             return {
                 "status": "insufficient_data",
-                "meta": AnalyticsMeta.reliability(len(data), MIN_SENTIMENT_FORECAST_POINTS)
+                "history": data,
+                "forecast": [],
+                "meta": AnalyticsMeta.reliability(
+                    len(data),
+                    MIN_VIBE_FORECAST_POINTS
+                )
             }
 
-        # Prepare regression inputs
-        y = np.array([item["avg_score"] for item in data])
+        # -------------------------
+        # PREPARE TRAINING DATA
+        # -------------------------
+        y = np.array([
+            item["avg_score"]
+            for item in data
+        ])
+
         x = np.arange(len(y)).reshape(-1, 1)
 
-        # Train model
+        # -------------------------
+        # TRAIN MODEL
+        # -------------------------
         model = LinearRegression()
         model.fit(x, y)
 
-        # Predict next value
-        next_x = np.array([[len(y)]])
-        prediction = model.predict(next_x)[0]
+        # -------------------------
+        # FORECAST FUTURE MONTHS
+        # -------------------------
+        future_x = np.arange(
+            len(y),
+            len(y) + FUTURE_FORECAST_MONTHS
+        ).reshape(-1, 1)
 
-        # Convert to label
-        label = (
-            "positive" if prediction > 0.3
-            else "negative" if prediction < -0.3
+        future_y = model.predict(future_x)
+
+        # Clamp to valid vibe score range (1-5)
+        future_y = np.clip(
+            future_y,
+            MIN_VIBE_SCORE,
+            MAX_VIBE_SCORE
+        )
+
+        # -------------------------
+        # FORMAT FORECAST
+        # -------------------------
+        forecast = [
+            {
+                "period": len(y) + i,
+                "predicted": float(score)
+            }
+            for i, score in enumerate(future_y)
+        ]
+
+        # -------------------------
+        # FINAL FORECAST VALUE
+        # -------------------------
+        final_prediction = float(future_y[-1])
+
+        predicted_vibe = (
+            "positive"
+            if final_prediction >= VIBE_POSITIVE_THRESHOLD
+            else "negative"
+            if final_prediction <= VIBE_NEGATIVE_THRESHOLD
             else "mixed"
         )
 
+        # -------------------------
+        # RETURN
+        # -------------------------
         return {
-            "forecast_score": float(prediction),
-            "predicted_vibe": label,
-            "meta": AnalyticsMeta.reliability(len(data), MIN_SENTIMENT_FORECAST_POINTS)
+            "history": data,
+            "forecast": forecast,
+            "forecast_score": final_prediction,
+            "predicted_vibe": predicted_vibe,
+            "forecast_months": FUTURE_FORECAST_MONTHS,
+            "meta": AnalyticsMeta.reliability(
+                len(data),
+                MIN_VIBE_FORECAST_POINTS
+            )
         }
     
 
@@ -335,51 +508,129 @@ class AnalyticsService:
         db: AsyncSession,
         business_id: int
     ):
-        
-        # Aggregate average sentiment score and count for each aspect related to the business
+        """
+        Provides aspect-level sentiment analysis summary for a business, including average sentiment score,
+        review count, and a label (positive/negative/neutral) for each aspect. Also includes trend data to show
+        sentiment trends over time.
+        """
+
+        # Aggregate aspect sentiment scores and counts grouped by aspect and month
         stmt = (
             select(
                 AspectSentiment.aspect,
+                func.strftime("%Y-%m", Review.created_at).label("period"),
                 func.avg(AspectSentiment.sentiment_score).label("avg_score"),
                 func.count(AspectSentiment.id).label("count"),
             )
             .join(Review, AspectSentiment.review_id == Review.id)
             .where(Review.business_id == business_id)
-            .group_by(AspectSentiment.aspect)
+            .group_by(
+                AspectSentiment.aspect,
+                func.strftime("%Y-%m", Review.created_at)
+            )
+            .order_by(AspectSentiment.aspect, "period")
         )
 
         result = await db.execute(stmt)
         rows = result.all()
 
-        # No aspects found for this business, return insufficient data
         if not rows:
             return {
                 "summary": {},
+                "trends": {},
                 "meta": AnalyticsMeta.reliability(0, MIN_ASPECT_COUNT)
             }
 
         summary = {}
+        trends = {}
+
         total_aspects = 0
 
-        # Interpret average sentiment score for each aspect and create summary with label
+        # Calculate weighted average sentiment score for each aspect and prepare trend data
         for row in rows:
+            aspect = row.aspect
             avg = float(row.avg_score)
             count = int(row.count)
+            period = row.period
 
             total_aspects += count
 
-            summary[row.aspect] = {
+            #  
+            if aspect not in summary:
+                summary[aspect] = {
+                    "total_score": 0.0,
+                    "total_count": 0
+                }
+
+            summary[aspect]["total_score"] += avg * count
+            summary[aspect]["total_count"] += count
+
+            # Prepare data for trend analysis
+            if aspect not in trends:
+                trends[aspect] = []
+
+            trends[aspect].append({
+                "period": period,
                 "avg_score": avg,
-                "count": count,
-                "label": (
-                    "positive" if avg > ABSA_POSITIVE_THRESHOLD
-                    else "negative" if avg < ABSA_NEGATIVE_THRESHOLD
-                    else "neutral"
-                )
+                "count": count
+            })
+
+        # -----------------------------
+        # finalize summary + compute trends
+        # -----------------------------
+        final_summary = {}
+        final_trends = {}
+
+        for aspect, data in summary.items():
+            avg = data["total_score"] / data["total_count"]
+
+            # -------------------------
+            # SUMMARY LABEL
+            # -------------------------
+            label = (
+                "positive" if avg > ABSA_POSITIVE_THRESHOLD
+                else "negative" if avg < ABSA_NEGATIVE_THRESHOLD
+                else "neutral"
+            )
+
+            final_summary[aspect] = {
+                "avg_score": avg,
+                "count": data["total_count"],
+                "label": label
             }
 
+        # -----------------------------
+        # TREND CLASSIFICATION
+        # -----------------------------
+        def compute_trend(points):
+            if len(points) < 2:
+                return "stable"
+
+            points = sorted(points, key=lambda x: x["period"])
+
+            first = points[0]["avg_score"]
+            last = points[-1]["avg_score"]
+
+            delta = last - first
+
+            if delta > 0.05:
+                return "improving"
+            elif delta < -0.05:
+                return "declining"
+            return "stable"
+
+        for aspect, points in trends.items():
+            final_trends[aspect] = {
+                "data": points,
+                "trend": compute_trend(points)
+            }
+
+        # -----------------------------
+        # return
+        # -----------------------------
         return {
-            "summary": summary,
+            "summary": final_summary,
+            "trends": final_trends,
             "meta": AnalyticsMeta.reliability(total_aspects, MIN_ASPECT_COUNT)
         }
 
@@ -390,16 +641,33 @@ class AnalyticsService:
 
     @staticmethod
     # vibe score over time (time series of vibe scores from snapshots)
-    async def get_vibe_score_over_time(db: AsyncSession, business_id: int):
+    async def get_vibe_score_over_time(
+        db: AsyncSession,
+        business_id: int,
+        granularity: str
+    ):
+        if granularity == "daily":
+            bucket = func.date(VibeSnapshot.snapshot_date)
 
-        # Retrieve vibe snapshots for the business
+        elif granularity == "weekly":
+            bucket = func.strftime("%Y-%W", VibeSnapshot.snapshot_date)
+
+        elif granularity == "monthly":
+            bucket = func.strftime("%Y-%m", VibeSnapshot.snapshot_date)
+
+        else:
+            raise ValueError("Invalid granularity")
+
+        # Aggregate average vibe score and count of snapshots in each time bucket
         stmt = (
             select(
-                VibeSnapshot.snapshot_date,
-                VibeSnapshot.vibe_score
+                bucket.label("period"),
+                func.avg(VibeSnapshot.vibe_score).label("avg_score"),
+                func.count(VibeSnapshot.id).label("snapshot_count"),
             )
             .where(VibeSnapshot.business_id == business_id)
-            .order_by(VibeSnapshot.snapshot_date)
+            .group_by("period")
+            .order_by("period")
         )
 
         result = await db.execute(stmt)
@@ -408,12 +676,16 @@ class AnalyticsService:
         return {
             "data": [
                 {
-                    "period": r.snapshot_date.isoformat(),
-                    "score": r.vibe_score
+                    "period": row.period,
+                    "avg_score": float(row.avg_score) if row.avg_score is not None else 0,
+                    "snapshot_count": row.snapshot_count,
                 }
-                for r in rows
+                for row in rows
             ],
-            "meta": AnalyticsMeta.reliability(len(rows), MIN_VIBE_TIMESERIES_POINTS)
+            "meta": AnalyticsMeta.reliability(
+                len(rows),
+                MIN_VIBE_TIMESERIES_POINTS
+            )
         }
 
 
@@ -626,7 +898,6 @@ class AnalyticsService:
 
     @staticmethod
     async def get_latest_vibe(db: AsyncSession, business_id: int):
-        """Get the latest vibe snapshot for a business"""
         stmt = (
             select(VibeSnapshot)
             .where(VibeSnapshot.business_id == business_id)
@@ -643,5 +914,6 @@ class AnalyticsService:
         return {
             "vibe_score": row.vibe_score,
             "vibe_label": row.vibe_label,
+            "reviews_analyzed": row.review_count,
             "date": row.snapshot_date
         }

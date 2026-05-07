@@ -5,9 +5,13 @@ import Home from "./pages/Home";
 import BusinessProfile from "./pages/BusinessProfile";
 import Navbar from "./components/Navbar.jsx";
 import OwnerRegister from "./pages/OwnerRegister.jsx";
-import BusinessDashboard from "./pages/business/BusinessDashboard.jsx";
+import BusinessLayout from "./components/business_owner/BusinessLayout.jsx";
+import BusinessDashboard from "./pages/business_owner/BusinessDashboard.jsx";
+import BusinessProfileManagement from "./pages/business_owner/BusinessProfileManagement.jsx";
+import BusinessReviews from "./pages/business_owner/BusinessReviews.jsx";
 import RoleProtectedRoute from "./components/security/RoleProtectedRoute.jsx";
 import GuestRoute from "./components/security/GuestRoute.jsx";
+
 
 function App() {
   return (
@@ -56,13 +60,11 @@ function App() {
             </RoleProtectedRoute>
           } />
 
-        <Route 
-          path="/business/dashboard" 
-          element={
-            <RoleProtectedRoute allowedRoles={["owner"]} requireAuth={true}>
-              <BusinessDashboard />
-            </RoleProtectedRoute>
-          } />
+        <Route path="/business" element={<RoleProtectedRoute allowedRoles={["owner"]}><BusinessLayout /></RoleProtectedRoute>}>
+          <Route path="dashboard" element={<BusinessDashboard />} />
+          <Route path="profile-management" element={<BusinessProfileManagement />} />
+          <Route path="reviews" element={<BusinessReviews />} />
+        </Route>
       </Routes>
 
     </>

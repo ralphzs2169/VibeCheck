@@ -1,60 +1,58 @@
-import AspectSentimentChip from '../AspectSentimentChip';
-import { PositiveIcon, NeutralIcon, NegativeIcon } from '../icons/SentimentIcons';
+import AspectSentimentChip from "../AspectSentimentChip";
+import { PositiveIcon, NeutralIcon, NegativeIcon } from "../icons/SentimentIcons";
 import formatRelativeTime from "../../utils/formatRelativeTime";
 
-export default function ReviewCard({ review }) {
+export default function ReviewCard({ review, compact = false }) {
   const getInitials = (firstname, lastname) => {
-    return `${(firstname?.[0] || '').toUpperCase()}${(lastname?.[0] || '').toUpperCase()}`;
+    return `${(firstname?.[0] || "").toUpperCase()}${(lastname?.[0] || "").toUpperCase()}`;
   };
 
-  const getSentimentIcon = () => {
-    switch (review.sentiment_label) {
-      case 'positive':
-        return <PositiveIcon className="w-5 h-5 text-emerald-600" />;
-      case 'neutral':
-        return <NeutralIcon className="w-5 h-5 text-gray-600" />;
-      case 'negative':
-        return <NegativeIcon className="w-5 h-5 text-rose-600" />;
-      default:
-        return null;
-    }
-  };
-
-  const aspectSentiments = review.aspect_sentiments || [];
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
-      {/* Header with user info and sentiment */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-full bg-[#004687] flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+    <div
+      className={[
+        "bg-white border border-gray-200 rounded-lg transition-shadow hover:shadow-sm",
+        compact ? "p-4" : "p-6",
+      ].join(" ")}
+    >
+      {/* HEADER */}
+      <div className={`flex items-start justify-between ${compact ? "mb-2" : "mb-4"}`}>
+        <div className={`flex items-start ${compact ? "gap-2" : "gap-4"}`}>
+          
+          {/* Avatar */}
+          <div
+            className={[
+              "rounded-full bg-[#004687] flex items-center justify-center text-white font-semibold flex-shrink-0",
+              compact ? "w-7 h-7 text-[10px]" : "w-12 h-12 text-sm",
+            ].join(" ")}
+          >
             {getInitials(review.user?.firstname, review.user?.lastname)}
           </div>
-          <div className="flex-1">
-            <p className="font-semibold text-gray-900">
+
+          {/* User */}
+          <div className="leading-tight">
+            <p className={`font-semibold text-gray-900 ${compact ? "text-sm" : "text-base"}`}>
               {review.user?.lastname}, {review.user?.firstname}
             </p>
-            <p className="text-sm text-gray-500">{formatRelativeTime(review.created_at)}</p>
+
+            <p className={`text-gray-500 ${compact ? "text-[11px]" : "text-sm"}`}>
+             <p className="text-sm text-gray-500">{formatRelativeTime(review.created_at)}</p>
+            </p>
           </div>
         </div>
-       
       </div>
 
-      {/* Review content */}
-      <p className="text-gray-700 leading-relaxed mb-4">{review.content}</p>
+      {/* CONTENT */}
+      <p
+        className={[
+          "text-gray-700",
+          compact ? "text-sm leading-snug mb-2" : "text-base leading-relaxed mb-4",
+        ].join(" ")}
+      >
+        {review.content}
+      </p>
 
-      {/* Aspect sentiments */}
-      {aspectSentiments.length > 0 && (
-        <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
-          {aspectSentiments.map((aspect, index) => (
-            <AspectSentimentChip
-              key={index}
-              aspect={aspect.aspect}
-              sentiment={aspect.sentiment_label}
-            />
-          ))}
-        </div>
-      )}
+  
     </div>
   );
 }

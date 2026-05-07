@@ -1,11 +1,12 @@
 import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.core.constants import VIBE_UI_MAP
 from backend.app.models.user import User
-from backend.app.services import auth_service
+from backend.app.services import auth_service, review_service
 import backend.app.services.business_service as business_service
 from backend.app.core.database import get_db
 from backend.app.core.dependencies import get_models
@@ -103,7 +104,6 @@ async def get_business_profile(
 # -------------------------
 # BUSINESS ANALYTICS ROUTES
 # -------------------------
-@router.get("/analytics/{business_id}")
 @router.get("/dashboard")
 async def get_dashboard(
     business_id: int | None = None,
@@ -112,12 +112,103 @@ async def get_dashboard(
 ):
 
     if business_id is None:
-        if not current_user.business:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No business found for user"
-            )
-        business_id = current_user.business.id
+        business_id = business_service.resolve_user_business_id(
+            current_user,
+            business_id
+        )
+
+
+    # security check
+    await business_service.verify_business_ownership(
+        db,
+        business_id,
+        current_user.id
+    )
+
+    profile = await business_service.get_business_by_id(db, business_id)
+
+    # -------------------------
+    # CARD METRICS
+    # -------------------------
+    latest_vibe = await AnalyticsService.get_latest_vibe(db, business_id)
+    vibe_score_trend = await AnalyticsService.get_vibe_score_trend(db, business_id)
+    spike_analysis = await AnalyticsService.get_review_event_detection(db, business_id)
+
+    # -------------------------
+    # CHART DATA (FOR VIBECHART)
+    # -------------------------
+    vibe_score_daily = await AnalyticsService.get_vibe_score_over_time(db, business_id, "daily")
+    vibe_score_weekly = await AnalyticsService.get_vibe_score_over_time(db, business_id, "weekly")
+    vibe_score_monthly = await AnalyticsService.get_vibe_score_over_time(db, business_id, "monthly")
+
+    # -------------------------
+    # ASPECT ANALYTICS
+    # -------------------------
+    aspects = await AnalyticsService.get_business_aspect_summary(db, business_id)
+
+    # derive UI label and type for vibe card based on latest vibe label
+    label = latest_vibe.get("vibe_label") if latest_vibe else None
+    label_key = label.lower() if label else None
+
+    review_count = await business_service.get_business_review_count(db, business_id)
+    business_health = await AnalyticsService.compute_business_health(
+        vibe_score=latest_vibe.get("vibe_score", 0),
+        trend=vibe_score_trend.get("trend", "stable"),
+        aspects=aspects["summary"],
+        review_count=review_count
+    )
+
+    return {
+        # PROFILE
+        "profile": profile,
+        "business_health": business_health,
+        "review_count": review_count,
+        # CARDS
+        "vibe": latest_vibe,
+        "vibe_ui": VIBE_UI_MAP.get(label_key),
+        "vibe_score_trend": vibe_score_trend,
+        "spike_analysis": spike_analysis,
+
+        "get_sentiment_over_time": await AnalyticsService.get_sentiment_over_time(db, business_id, "daily"),
+        "get_sentiment_distribution": await AnalyticsService.get_sentiment_distribution(db, business_id),
+
+        "forecast_vibe": await AnalyticsService.forecast_vibe_score(db, business_id),
+        # CHART DATA (VibeChart)
+        "vibe_chart": {
+            "7D": vibe_score_daily["data"],
+            "30D": vibe_score_weekly["data"],
+            "90D": vibe_score_monthly["data"],
+        },
+  
+        # ASPECTS (AspectAnalytics)
+        "aspects": [
+            {
+                "name": k,
+                "score": v["avg_score"],
+                "label": v["label"],
+
+                # NEW: include time-series trend
+                "trend": aspects["trends"].get(k, {}).get("trend", "stable"),
+                "timeline": aspects["trends"].get(k, {}).get("data", []),
+            }
+            for k, v in aspects["summary"].items()
+        ],
+        "latest_reviews": await review_service.get_latest_reviews_for_business(db, business_id, limit=5)
+    }
+
+
+@router.get("/analytics")
+async def get_analytics(
+    business_id: int | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(auth_service.get_authenticated_user),
+):
+    
+    # If business_id is not provided, resolve it from the authenticated user's business
+    business_id = business_service.resolve_user_business_id(
+        current_user,
+        business_id
+    )
 
     # verify ownership before doing any analytics work
     await business_service.verify_business_ownership(

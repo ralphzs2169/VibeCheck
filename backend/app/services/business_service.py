@@ -4,11 +4,11 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-import logging
 
 from backend.app.core.ml_registry import MLRegistry
 from backend.app.models.business import Business
 from backend.app.models.review import Review
+from backend.app.models.user import User
 from backend.app.models.vibe_snapshot import VibeSnapshot
 from backend.app.schemas.business import BusinessCreate, BusinessUpdate
 from backend.app.services.vibe_snapshot_service import (
@@ -68,6 +68,21 @@ async def get_all_businesses(db: AsyncSession) -> list[Business]:
     return result.scalars().all()
 
 
+async def get_business_review_count(
+        db: AsyncSession,
+        business_id: int
+    ) -> int:
+
+        stmt = (
+            select(func.count(Review.id))
+            .where(Review.business_id == business_id)
+        )
+
+        result = await db.execute(stmt)
+        count = result.scalar()
+
+        return count or 0
+    
 async def get_business_homepage_feed(db: AsyncSession):
 
     latest_subquery = (
@@ -125,13 +140,12 @@ async def get_business_homepage_feed(db: AsyncSession):
     return response_data
 
 
-logger = logging.getLogger(__name__)
 async def verify_business_ownership(
     db: AsyncSession,
     business_id: int,
     user_id: int
 ) -> Business:
-    logger.info(f"Verifying ownership for user {user_id} on business {business_id}")
+
     business = await get_business_by_id(db, business_id)
 
     if not business:
@@ -147,6 +161,19 @@ async def verify_business_ownership(
         )
 
     return business
+
+
+def resolve_user_business_id(user: User, business_id: int | None) -> int:
+        if business_id is not None:
+            return business_id
+
+        if not user.business:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No business found for user"
+            )
+
+        return user.business.id
 
 
 async def update_business(

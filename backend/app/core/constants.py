@@ -21,6 +21,15 @@ VIBE_LABELS = {
     "high_negative": "Highly Negative"
 }
 
+VIBE_UI_MAP = {
+    "high_positive": {"type": "stable", "ui_label": "Highly Positive"},
+    "positive": {"type": "stable", "ui_label": "Positive"},
+    "mixed": {"type": "warning", "ui_label": "Mixed"},
+    "negative": {"type": "alert", "ui_label": "Negative"},
+    "high_negative": {"type": "alert", "ui_label": "Highly Negative"},
+}
+
+
 # number of keywords to extract for vibe summaries (can be adjusted based on desired summary length and detail)
 KEYWORD_EXTRACTION_TOP_N = 4
 
@@ -80,8 +89,14 @@ VOLATILITY_STABLE_THRESHOLD = 0.3
 # Peak and drop detection thresholds
 MIN_PEAK_DROP_POINTS = 5
 
-# Sentiment forecast thresholds
-MIN_SENTIMENT_FORECAST_POINTS = 6
+# Vibe forecast thresholds
+MIN_VIBE_FORECAST_POINTS = 6
+FUTURE_FORECAST_MONTHS = 6
+MIN_VIBE_SCORE = 1.0
+MAX_VIBE_SCORE = 5.0
+
+VIBE_POSITIVE_THRESHOLD = 3.5
+VIBE_NEGATIVE_THRESHOLD = 2.5
 
 # Aspect summary thresholds
 MIN_ASPECT_COUNT = 5

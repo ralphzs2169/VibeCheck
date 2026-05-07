@@ -68,15 +68,58 @@ BUSINESS_VIBE_PROFILES = {
 # -----------------------------
 
 
+FIXED_PASSWORD = "09232929"
+
+def create_seed_users():
+    """
+    Creates:
+    - 5 business owners
+    - 5 regular users
+    """
+    users = []
+    owners = []
+
+    for i in range(5):
+        owner = User(
+            username=fake.unique.user_name(),
+            firstname=fake.first_name(),
+            lastname=fake.last_name(),
+            role="owner",
+            hashed_password=hash_password(FIXED_PASSWORD),
+        )
+        users.append(owner)
+        owners.append(owner)
+
+    for i in range(5):
+        user = User(
+            username=fake.unique.user_name(),
+            firstname=fake.first_name(),
+            lastname=fake.last_name(),
+            role="user",
+            hashed_password=hash_password(FIXED_PASSWORD),
+        )
+        users.append(user)
+
+    return users, owners
+
 async def get_first_review_date(db, business_id: int):
+    """
+    Get the date of the first review for a business to determine how far back to backfill vibe snapshots.
+    If there are no reviews, return None and skip backfilling.
+    """
     result = await db.execute(
-        select(func.min(Review.created_at))
-        .where(Review.business_id == business_id)
+        select(Review.created_at).where(
+            Review.business_id == business_id
+        ).order_by(Review.created_at.asc()).limit(1)
     )
     return result.scalar()
 
 
 async def backfill_vibe_snapshots(db, business_id: int, models: MLRegistry):
+    """
+    Backfill vibe snapshots for a business starting from the date of the first review up to today.
+    Creates 1 snapshot per day to ensure consistent time-series data for analytics and forecasting.
+    """
     first_date = await get_first_review_date(db, business_id)
 
     if not first_date:
@@ -111,6 +154,11 @@ async def backfill_vibe_snapshots(db, business_id: int, models: MLRegistry):
 
 
 def get_sentiment_stage(vibe_type: str, progress: float):
+    """
+    Determines the sentiment stage (positive, neutral, negative) for a review 
+    based on the business's vibe profile and the review's position in the timeline. 
+    This allows us to generate reviews that align with the intended vibe trajectory of each business.
+    """
     if vibe_type == "improving":
         if progress < 0.4:
             return "negative"
@@ -149,6 +197,10 @@ def generate_review_from_stage(stage: str):
     
 
 def add_noise(text: str):
+    """
+    Adds optional noise to review text for realism, such as hedging phrases or filler words. 
+    This helps create more natural and varied reviews that better mimic real user-generated content.
+    """
     noise = [
         "overall though",
         "still worth mentioning",
@@ -173,35 +225,28 @@ def generate_review_by_vibe(vibe_type: str, day_index: int, total: int = 30):
     return base_text
 
 def generate_created_at_with_bias() -> datetime:
-    # Distribute reviews across full 6-month period for adequate forecast data
-    # Forecasting requires 6 months of monthly data points
-    
-    weights = [
-        ("-6mo", "-5mo"),
-        ("-5mo", "-4mo"),
-        ("-4mo", "-3mo"),
-        ("-3mo", "-2mo"),
-        ("-2mo", "-1mo"),
-        ("-1mo", "now"),
-    ]
+    start, end = random.choices([
+        ("-6M", "-5M"),
+        ("-5M", "-4M"),
+        ("-4M", "-3M"),
+        ("-3M", "-2M"),
+        ("-2M", "-1M"),
+        ("-1M", "now"),
+    ], weights=[1]*6)[0]
 
-    # Even distribution across 6 months for demo purposes
-    start, end = random.choices(weights, weights=[1, 1, 1, 1, 1, 1])[0]
+    dt = fake.date_time_between(start_date=start, end_date=end)
 
-    return fake.date_time_between(start_date=start, end_date=end, tzinfo=timezone.utc)
+    # FORCE UTC
+    return dt.replace(tzinfo=timezone.utc)
 
-
-# -----------------------------
-# Main seeding function
-# -----------------------------
 async def seed() -> None:
-    # Load ML models first
     print("Loading ML models...")
+
     sentiment_model = pipeline(
         "sentiment-analysis",
         model="distilbert-base-uncased-finetuned-sst-2-english"
     )
-    
+
     embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
     aspect_texts = list(ASPECTS.values())
     aspect_embeddings = embedding_model.encode(aspect_texts, convert_to_tensor=True)
@@ -213,42 +258,63 @@ async def seed() -> None:
         aspect_embeddings=aspect_embeddings,
         keyword_extractor=keyword_extractor_model
     )
-    
+
     async with AsyncSessionLocal() as db:
 
-        # Create tables if they don't exist
+        # -----------------------------
+        # Setup DB
+        # -----------------------------
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
-        # Clear existing data
         await db.execute(Review.__table__.delete())
         await db.execute(Business.__table__.delete())
         await db.execute(User.__table__.delete())
         await db.commit()
 
         # -----------------------------
-        # Seed users
+        # USERS (5 owners + 5 users)
         # -----------------------------
         print("Seeding users...")
-        users = []
 
-        for _ in range(10):
+        users = []
+        owners = []
+
+        for _ in range(5):
+            owner = User(
+                username=fake.unique.user_name(),
+                firstname=fake.first_name(),
+                lastname=fake.last_name(),
+                role="owner",
+                hashed_password=hash_password(FIXED_PASSWORD),
+            )
+            db.add(owner)
+            owners.append(owner)
+            users.append(owner)
+
+        for _ in range(5):
             user = User(
                 username=fake.unique.user_name(),
                 firstname=fake.first_name(),
                 lastname=fake.last_name(),
-                hashed_password=hash_password(fake.password(length=12)),  # FIXED: proper hashing
+                role="reviewer",
+                hashed_password=hash_password(FIXED_PASSWORD),
             )
             db.add(user)
             users.append(user)
 
+        await db.commit()
+
+        for u in users:
+            await db.refresh(u)
+
         # -----------------------------
-        # Seed businesses
+        # BUSINESSES (deterministic owner assignment)
         # -----------------------------
         print("Seeding businesses...")
-        businesses = []
 
-        vibe_types = ["improving", "kind_stable", "stable", "declining"]
+        businesses = []
+        business_vibes = ["improving", "kind_stable", "stable", "declining"]
 
         for i in range(4):
             business = Business(
@@ -256,38 +322,36 @@ async def seed() -> None:
                 location=fake.city(),
                 short_description=fake.sentence(nb_words=8),
                 image_path=None,
+                owner_id=owners[i % len(owners)].id
             )
+
             db.add(business)
             businesses.append(business)
 
-            business.vibe_profile = vibe_types[i]
-
-
         await db.commit()
 
-        # Refresh IDs
-        for user in users:
-            await db.refresh(user)
-        for business in businesses:
-            await db.refresh(business)
+        for b in businesses:
+            await db.refresh(b)
 
-
-        # Seed reviews 
+        # -----------------------------
+        # REVIEWS (IMPORTANT FIX: spread time correctly)
+        # -----------------------------
         print("Seeding reviews...")
 
         review_objects = []
         review_meta = []
 
-        reviews_per_business = 30
+        reviews_per_business = 40
 
-        for business in businesses:
-            for i in range(reviews_per_business):
+        for i, business in enumerate(businesses):
+            vibe_type = business_vibes[i]
 
-                created_at = datetime.now(timezone.utc) - timedelta(days=(reviews_per_business - i))
+            for j in range(reviews_per_business):
+                created_at = generate_created_at_with_bias()
 
                 review_text = generate_review_by_vibe(
-                    business.vibe_profile,
-                    i,
+                    vibe_type,
+                    j,
                     reviews_per_business
                 )
 
@@ -295,16 +359,11 @@ async def seed() -> None:
 
         review_texts = [r[0] for r in review_meta]
 
-        # sentiment batch
         results = analyze_sentiment_batch(review_texts, models.sentiment)
 
-        # Create review objects 
-        for (review_text, business, created_at), (score, label, _) in zip(
-            review_meta,
-            results
-        ):
+        for (text, business, created_at), (score, label, _) in zip(review_meta, results):
             review = Review(
-                content=review_text,
+                content=text,
                 sentiment_label=label,
                 sentiment_score=score,
                 user_id=random.choice(users).id,
@@ -317,19 +376,23 @@ async def seed() -> None:
 
         await db.commit()
 
-        # IMPORTANT: ensure IDs exist
         for r in review_objects:
             await db.refresh(r)
 
-        print("Running ABSA on seeded reviews...")
+        # -----------------------------
+        # ABSA
+        # -----------------------------
+        print("Running ABSA...")
 
         for review in review_objects:
             await run_absa_for_review(db, review, models)
 
         await db.commit()
 
-
-        print("Creating historical vibe snapshots...")
+        # -----------------------------
+        # SNAPSHOTS (THIS IS CORRECT LOGIC)
+        # -----------------------------
+        print("Creating vibe snapshots...")
 
         for business in businesses:
             print(f"Backfilling business {business.id}...")
@@ -337,11 +400,7 @@ async def seed() -> None:
 
         await db.commit()
 
-
-        await db.commit()
-
-        print("Database seeding complete!")
-
+        print("Seeding complete!")
 
 
 # Entry point for running the seed script

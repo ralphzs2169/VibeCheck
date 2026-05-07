@@ -19,7 +19,7 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     firstname: Mapped[str] = mapped_column(String(20), nullable=False)
     lastname: Mapped[str] = mapped_column(String(20), nullable=False)
-    role: Mapped[str] = mapped_column(String(20), default="reviewer", nullable=False)
+    role: Mapped[str] = mapped_column(String(20), nullable=False, default="reviewer")  # "owner" or "reviewer"
     hashed_password: Mapped[str] = mapped_column(String(128), nullable=False)
     token: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
@@ -41,7 +41,7 @@ class User(Base):
     )
 
     # Establish relationship with Business (business owned by the user)
-    business = relationship(
+    business: Mapped["Business"] = relationship(
         "Business",
         back_populates="owner",
         uselist=False
