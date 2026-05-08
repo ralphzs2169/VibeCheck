@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.core.constants import VIBE_UI_MAP
 from backend.app.models.user import User
 from backend.app.services import auth_service, review_service
+from backend.app.services import analytics_service
 import backend.app.services.business_service as business_service
 from backend.app.core.database import get_db
 from backend.app.core.dependencies import get_models
@@ -151,7 +152,7 @@ async def get_dashboard(
     label_key = label.lower() if label else None
 
     review_count = await business_service.get_business_review_count(db, business_id)
-    business_health = await AnalyticsService.compute_business_health(
+    business_health = await analytics_service.compute_business_health(
         vibe_score=latest_vibe.get("vibe_score", 0),
         trend=vibe_score_trend.get("trend", "stable"),
         aspects=aspects["summary"],

@@ -65,7 +65,7 @@ function formatTrend(trend) {
 }
 
 // -----------------------------
-// TOOLTIP (UPDATED)
+// TOOLTIP
 // -----------------------------
 function AspectTooltip({ data, trendUI }) {
     if (!data || !trendUI) return null;
@@ -107,24 +107,39 @@ function AspectAnalytics({ aspects = [], onViewAll }) {
         aspects.map((a) => [a.name, a])
     );
 
-    const sortedAspects = [...FIXED_ASPECT_ORDER].sort((a, b) => {
-        const aHas = aspectMap[a] !== undefined;
-        const bHas = aspectMap[b] !== undefined;
-        if (aHas && !bHas) return -1;
-        if (!aHas && bHas) return 1;
-        return 0;
-    });
+    // -----------------------------
+    // FIXED + DATA-AWARE RANKING
+    // -----------------------------
+    const ordered = [...FIXED_ASPECT_ORDER];
+
+    const withData = [];
+    const withoutData = [];
+
+    for (const name of ordered) {
+        if (aspectMap[name]) {
+            withData.push(name);
+        } else {
+            withoutData.push(name);
+        }
+    }
+
+    const sortedAspects = [...withData, ...withoutData];
+
+    const DISPLAY_LIMIT = 4;
 
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col">
 
-            <h2 className="text-lg font-semibold text-gray-900 mb-5">
+            <h2 className="text-lg font-semibold text-gray-900">
                 Aspect Analytics
             </h2>
+            <p className="text-xs text-gray-400 mt-0.5 mb-3">
+                Key factors influencing overall business perception
+            </p>
 
             <div className="flex flex-col gap-5 flex-1">
 
-                {sortedAspects.slice(0, 4).map((aspectName, index) => {
+                {sortedAspects.slice(0, DISPLAY_LIMIT).map((aspectName, index) => {
                     const aspect = aspectMap[aspectName];
                     const hasData = !!aspect;
 
@@ -140,9 +155,7 @@ function AspectAnalytics({ aspects = [], onViewAll }) {
                         ? Math.round(((score + 1) / 2) * 100)
                         : 0;
 
-                    // Ensure that when an aspect is highly negative we still show
-                    // a small visible red segment instead of leaving the bar empty.
-                    const MIN_NEGATIVE_PERCENT = 6; // small visible sliver
+                    const MIN_NEGATIVE_PERCENT = 6;
 
                     const percent = hasData
                         ? score <= -0.8
@@ -176,7 +189,6 @@ function AspectAnalytics({ aspects = [], onViewAll }) {
                             {/* HEADER */}
                             <div className="flex justify-between items-center mb-1">
 
-                                {/* LEFT: ICON + NAME */}
                                 <div className="flex items-center gap-2">
                                     <span className="text-sm text-gray-700 font-medium capitalize">
                                         {aspectName}
@@ -187,13 +199,10 @@ function AspectAnalytics({ aspects = [], onViewAll }) {
                                             className={`w-5 h-5 ${trendUI.color}`}
                                         />
                                     )}
-
-                                    
                                 </div>
 
-                                {/* RIGHT: LABEL ONLY (NO TREND BADGE ANYMORE) */}
-                                <span className="text-xs font-medium text-gray-800">
-                                    {hasData ? data.label : "--"}
+                                <span className={`text-xs ${hasData ? "font-medium text-gray-800" : "text-gray-400"}`}>
+                                    {hasData ? data.label : "No mentions yet"}
                                 </span>
 
                             </div>
@@ -203,25 +212,17 @@ function AspectAnalytics({ aspects = [], onViewAll }) {
                                 <div
                                     className={`h-full rounded-full transition-all duration-700 ease-out ${barColor}`}
                                     style={{
-                                        width: animate
-                                            ? `${percent}%`
-                                            : "0%",
+                                        width: animate ? `${percent}%` : "0%",
                                         transitionDelay: `${index * 60}ms`,
                                     }}
                                 />
                             </div>
 
-                            {!hasData && (
-                                <p className="text-xs text-gray-400 mt-1">
-                                    No data yet
-                                </p>
-                            )}
                         </div>
                     );
                 })}
             </div>
 
-            {/* BUTTON */}
             <button
                 onClick={onViewAll}
                 className="mt-6 w-full border border-gray-200 rounded-xl py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"

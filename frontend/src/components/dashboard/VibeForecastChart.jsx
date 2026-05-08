@@ -10,6 +10,12 @@ import {
     ReferenceArea,
 } from "recharts";
 
+import { GraphIcon } from "../icons/AnalyticsIcons";
+
+/* -----------------------------
+   HELPERS
+------------------------------ */
+
 function toPeriodLabelFromOffset(baseLabel, offset) {
     try {
         const [y, m] = baseLabel.split("-").map(Number);
@@ -27,7 +33,6 @@ function toPeriodLabelFromOffset(baseLabel, offset) {
 function mergeHistoryAndForecast(payload = {}) {
     const history = Array.isArray(payload.history) ? payload.history : [];
     const forecast = Array.isArray(payload.forecast) ? payload.forecast : [];
-    const future_months = payload.forecast_months || 6;
 
     const lastHistory = history[history.length - 1]?.period;
 
@@ -35,7 +40,6 @@ function mergeHistoryAndForecast(payload = {}) {
         period: item.period,
         history: item.avg_score,
         forecast: null,
-        future_months: null,
         type: "history",
     }));
 
@@ -46,18 +50,15 @@ function mergeHistoryAndForecast(payload = {}) {
                 : toPeriodLabelFromOffset(lastHistory, Number(item.period)),
         history: null,
         forecast: item.predicted,
-        future_months: null,
         type: "forecast",
     }));
 
-    // Connect forecast line from last historical point
     if (historyPoints.length && forecastPoints.length) {
         forecastPoints.unshift({
-            period: historyPoints[historyPoints.length - 1].period,
-            history: null,
-            forecast: historyPoints[historyPoints.length - 1].history,
+            period: historyPoints.at(-1).period,
+            history: historyPoints.at(-1).history,
+            forecast: historyPoints.at(-1).history,
             type: "forecast",
-            future_months: null,
         });
     }
 
@@ -70,239 +71,168 @@ function getVibeLabel(score) {
     return "Mixed";
 }
 
+/* -----------------------------
+   TOOLTIP
+------------------------------ */
+
 function CustomTooltip({ active, payload }) {
     if (!active || !payload?.length) return null;
 
     const point = payload[0].payload;
     const value = point.history ?? point.forecast ?? 0;
-    const vibeLabel = getVibeLabel(value);
 
     return (
         <div className="bg-white border border-gray-100 shadow-xl rounded-xl px-3 py-2 text-xs">
             <p className="font-semibold text-gray-700">{point.period}</p>
-
             <p className="text-gray-500 mt-1">
                 {point.type === "forecast" ? "Forecast" : "Historical"}
             </p>
-
             <p className="font-semibold text-[#004687] mt-1">
                 Vibe Score: {value.toFixed(1)}
             </p>
-
-            <p className="text-gray-500">
-                Vibe: {vibeLabel}
-            </p>
+            <p className="text-gray-500">Vibe: {getVibeLabel(value)}</p>
         </div>
     );
 }
 
-function ForecastLegend() {
-    return (
-        <div className="flex items-center gap-4 text-xs text-gray-500">
-            <div className="flex items-center gap-2">
-                <div className="w-4 h-[2px] bg-sky-500" />
-                Historical
-            </div>
-
-            <div className="flex items-center gap-2">
-                <div className="w-4 h-[2px] border-t-2 border-dashed border-sky-500 opacity-70" />
-                Forecast
-            </div>
-        </div>
-    );
-}
+/* -----------------------------
+   MAIN COMPONENT
+------------------------------ */
 
 export default function VibeForecastChart({ data = {} }) {
-    const dataset = useMemo(() => mergeHistoryAndForecast(data), [data]);
+    const historyCount = data?.history?.length ?? 0;
 
-    const primaryColor = "#0ea5e9";
-    const future_months = data.forecast_months || 6;
+    const isInsufficient =
+        data?.meta?.is_reliable === false || historyCount < 6;
 
-    const forecastStart = dataset.find(
-        (item) => item.type === "forecast"
-    )?.period;
+    const dataset = useMemo(
+        () => mergeHistoryAndForecast(data),
+        [data]
+    );
 
-    const forecastEnd = dataset[dataset.length - 1]?.period;
+    const futureMonths = data.forecast_months || 6;
+
+    const forecastStart = dataset.find((i) => i.type === "forecast")?.period;
+    const forecastEnd = dataset.at(-1)?.period;
 
     const vibe = data.predicted_vibe || "mixed";
 
     const vibeBadge = {
-        positive: {
-            label: "Forecast: Positive",
-            className: "bg-green-50 text-green-700",
-        },
-        negative: {
-            label: "Forecast: Negative",
-            className: "bg-red-50 text-red-700",
-        },
-        mixed: {
-            label: "Forecast: Mixed",
-            className: "bg-gray-50 text-gray-700",
-        },
+        positive: "bg-green-50 text-green-700",
+        negative: "bg-red-50 text-red-700",
+        mixed: "bg-gray-50 text-gray-700",
     }[vibe];
 
     const insightText =
         vibe === "positive"
-            ? "Forecast suggests the business vibe may remain positive in upcoming months."
+            ? "Forecast suggests a positive trend in upcoming months."
             : vibe === "negative"
-            ? "Forecast suggests the business vibe may continue declining in upcoming months."
-            : "Forecast shows no strong directional shift in overall vibe.";
+            ? "Forecast suggests a declining trend in upcoming months."
+            : "Forecast shows no strong directional shift.";
 
     return (
-        <div className="min-w-0 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 h-full flex flex-col">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+
             {/* HEADER */}
-            <div className="flex items-start justify-between mb-5">
+            <div className="flex justify-between items-start mb-5">
                 <div>
                     <h2 className="text-lg font-semibold text-gray-900">
                         Vibe Score Forecast
                     </h2>
                     <p className="text-xs text-gray-400 mt-1">
-                       Historical vibe score with trend forecasting for next {future_months} months
+                        Next {futureMonths} months projection
                     </p>
                 </div>
 
-                <div
-                    className={`text-xs font-semibold px-3 py-1 rounded-full ${vibeBadge.className}`}
-                >
-                    {vibeBadge.label}
-                </div>
+                {!isInsufficient && (
+                    <div className={`text-xs font-semibold px-3 py-1 rounded-full ${vibeBadge}`}>
+                        {vibe.charAt(0).toUpperCase() + vibe.slice(1)}
+                    </div>
+                )}
             </div>
 
-            {/* LEGEND */}
-            <div className="mb-4">
-                <ForecastLegend />
-            </div>
+            {/* BODY */}
+            <div className="h-[280px]">
 
-            {/* CHART */}
-            <div className="min-w-0 flex-1 min-h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
-                        data={dataset}
-                        margin={{
-                            top: 5,
-                            right: 5,
-                            left: -20,
-                            bottom: 0,
-                        }}
-                    >
-                        <defs>
-                            <linearGradient
-                                id="vibeGradient"
-                                x1="0"
-                                y1="0"
-                                x2="0"
-                                y2="1"
-                            >
-                                <stop
-                                    offset="5%"
-                                    stopColor="#004687"
-                                    stopOpacity={0.15}
-                                />
-                                <stop
-                                    offset="95%"
-                                    stopColor="#004687"
-                                    stopOpacity={0}
-                                />
-                            </linearGradient>
-                            <linearGradient
-                                id="forecastGradient"
-                                x1="0"
-                                y1="0"
-                                x2="0"
-                                y2="1"
-                            >
-                                <stop
-                                    offset="5%"
-                                    stopColor="#0ea5e9"
-                                    stopOpacity={0.08}
-                                />
-                                <stop
-                                    offset="95%"
-                                    stopColor="#0ea5e9"
-                                    stopOpacity={0}
-                                />
-                            </linearGradient>
-                        </defs>
+                {isInsufficient ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-300">
+                            <GraphIcon className="w-6 h-6" />
+                        </div>
 
-                        <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="#f0f0f0"
-                            vertical={false}
-                        />
+                        <p className="font-medium text-gray-700">
+                            Forecast not ready yet
+                        </p>
 
-                        {forecastStart && (
-                            <ReferenceArea
-                                x1={forecastStart}
-                                x2={forecastEnd}
-                                fill="#f8fafc"
+                        <p className="text-xs text-gray-400">
+                            Need at least{" "}
+                            <span className="font-semibold text-[#004687]">
+                                6 months of data
+                            </span>{" "}
+                            to generate predictions.
+                        </p>
+                    </div>
+
+                ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={dataset}>
+                            <defs>
+                                <linearGradient id="vibeGradient" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#004687" stopOpacity={0.15} />
+                                    <stop offset="95%" stopColor="#004687" stopOpacity={0} />
+                                </linearGradient>
+
+                                <linearGradient id="forecastGradient" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.1} />
+                                    <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+
+                            {forecastStart && (
+                                <ReferenceArea x1={forecastStart} x2={forecastEnd} fill="#f8fafc" />
+                            )}
+
+                            <XAxis dataKey="period" tick={{ fontSize: 12 }} />
+                            <YAxis domain={[1, 5]} tick={{ fontSize: 12 }} />
+
+                            <Tooltip content={<CustomTooltip />} />
+
+                            <Area
+                                type="monotone"
+                                dataKey="history"
+                                stroke="#004687"
+                                fill="url(#vibeGradient)"
+                                strokeWidth={2.5}
+                                dot={false}
+                                connectNulls={false}
                             />
-                        )}
 
-                        <XAxis
-                            dataKey="period"
-                            tick={{ fontSize: 12, fill: "#9ca3af" }}
-                            axisLine={false}
-                            tickLine={false}
-                        />
-
-                        <YAxis
-                            domain={[1, 5]}
-                            tick={{ fontSize: 12, fill: "#9ca3af" }}
-                            axisLine={false}
-                            tickLine={false}
-                            tickFormatter={(value) => value.toFixed(1)}
-                        />
-
-                        <Tooltip content={<CustomTooltip />} />
-
-                        {/* Historical */}
-                        <Area
-                            type="monotone"
-                            dataKey="history"
-                            stroke="#004687"
-                            strokeWidth={2.5}
-                            fill="url(#vibeGradient)"
-                            dot={false}
-                            activeDot={{
-                                r: 5,
-                                fill: "#004687",
-                                stroke: "#fff",
-                                strokeWidth: 2,
-                            }}
-                            connectNulls={false}
-                        />
-
-                        {/* Forecast */}
-                        <Area
-                            type="monotone"
-                            dataKey="forecast"
-                            stroke="#0ea5e9"
-                            strokeWidth={2.5}
-                            strokeDasharray="6 6"
-                            fill="url(#forecastGradient)"
-                            strokeOpacity={0.65}
-                            dot={false}
-                            activeDot={{
-                                r: 5,
-                                fill: "#0ea5e9",
-                                stroke: "#fff",
-                                strokeWidth: 2,
-                            }}
-                            connectNulls
-                        />
-                    </AreaChart>
-                </ResponsiveContainer>
+                            <Area
+                                type="monotone"
+                                dataKey="forecast"
+                                stroke="#0ea5e9"
+                                fill="url(#forecastGradient)"
+                                strokeDasharray="6 6"
+                                strokeWidth={2.5}
+                                dot={false}
+                                connectNulls
+                            />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                )}
             </div>
 
             {/* INSIGHT */}
-            <div className="mt-4 bg-gray-50 rounded-xl p-3">
-                <p className="text-sm font-medium text-gray-700 mb-1">
-                    Forecast Insight
-                </p>
-                <p className="text-sm text-gray-500">
-                    {insightText}
-                </p>
-            </div>
+            {!isInsufficient && (
+                <div className="mt-4 bg-gray-50 rounded-xl p-3">
+                    <p className="text-sm font-medium text-gray-700 mb-1">
+                        Forecast Insight
+                    </p>
+                    <p className="text-sm text-gray-500">{insightText}</p>
+                </div>
+            )}
         </div>
     );
 }

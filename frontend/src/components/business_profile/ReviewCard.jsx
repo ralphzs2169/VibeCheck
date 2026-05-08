@@ -7,6 +7,7 @@ export default function ReviewCard({ review, compact = false }) {
     return `${(firstname?.[0] || "").toUpperCase()}${(lastname?.[0] || "").toUpperCase()}`;
   };
 
+  const aspectSentiments = review.aspect_sentiments || [];
 
   return (
     <div
@@ -52,6 +53,19 @@ export default function ReviewCard({ review, compact = false }) {
         {review.content}
       </p>
 
+      {/* ASPECTS */}
+       {/* Aspect sentiments */}
+      {aspectSentiments.length > 0 && (
+        <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
+          {aspectSentiments.map((aspect, index) => (
+            <AspectSentimentChip
+              key={index}
+              aspect={aspect.aspect}
+              sentiment={aspect.sentiment_label}
+            />
+          ))}
+        </div>
+      )}
   
     </div>
   );

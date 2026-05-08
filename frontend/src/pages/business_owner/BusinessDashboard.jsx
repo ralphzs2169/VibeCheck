@@ -161,7 +161,7 @@ function BusinessDashboard() {
                 <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] gap-4 items-start">
                     <div className="space-y-4 min-w-0">
                         {/* Metric Cards */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
 
                             {/* VIBE SCORE */}
                             <MetricCard
@@ -264,8 +264,8 @@ function BusinessDashboard() {
                                                 <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
                                                 </svg>
-                                                <h3 className="text-lg font-semibold text-gray-900 mb-2">No reviews yet</h3>
-                                                <p className="text-gray-600">This business doesn't have any reviews yet.</p>
+                                                <h3 className="text-medium font-semibold text-gray-700 mb-2">No reviews yet</h3>
+                                                <p className="text-xs text-gray-400">This business doesn't have any reviews yet.</p>
                                             </>
                                             
                                         </div>

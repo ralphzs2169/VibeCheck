@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.core.constants import (
     ABSA_NEGATIVE_THRESHOLD,
     ABSA_POSITIVE_THRESHOLD,
+    BUSINESS_HEALTH_CONFIG,
     CONFIDENCE_SENTIMENT_WEIGHT,
     CONFIDENCE_VOLUME_WEIGHT,
     EMA_ALPHA,
@@ -33,7 +34,8 @@ from backend.app.core.constants import (
     VIBE_POSITIVE_THRESHOLD,
     VIBE_NEGATIVE_THRESHOLD
 )
-from backend.app.core.mappers import map_business_health_label, map_consistency, map_confidence
+
+from backend.app.services import health_score_service
 from backend.app.models.aspect_sentiment import AspectSentiment
 from backend.app.models.review import Review
 from backend.app.models.vibe_snapshot import VibeSnapshot
@@ -49,109 +51,92 @@ class AnalyticsMeta:
             "sample_size": sample_size,
             "min_required": minimum
         }
-    
 
+async def compute_business_health(
+    vibe_score: float,
+    trend: str,
+    aspects: dict,
+    review_count: int
+):
+    config = BUSINESS_HEALTH_CONFIG
+
+    # Data quality assessment (determines if we have enough data to compute a reliable health score, 
+    # and applies penalties if data is sparse)
+    data_quality = health_score_service.get_data_quality(review_count)
+
+    if data_quality == "no_data":
+        return health_score_service.get_no_data_business_health()
+
+    # Normalize vibe score and trend to 0–1 range for scoring
+    vibe_norm = health_score_service.normalize_vibe_score(vibe_score)
+    trend_norm = health_score_service.normalize_trend(trend, config)
+
+    # aspect consistency (measures how consistent the aspect sentiment scores are,
+    #  which can indicate reliability of overall vibe)
+    aspect_values  = [
+        a["avg_score"]
+        for a in aspects.values()
+        if isinstance(a, dict) and "avg_score" in a
+    ]
+
+    aspect_result = health_score_service.compute_aspect_stability(
+        aspect_values,
+        config
+    )
+
+    consistency = aspect_result["consistency"]
+
+    # confidence (measures how much we can trust the vibe score based on volume and sentiment strength of reviews)
+    confidence = health_score_service.compute_confidence(
+        review_count,
+        config
+    )
+
+    # cold start detection (if we have very few reviews, we should rely more on consistency and less on vibe/trend)
+    cold_start_threshold = config["confidence"]["min_score"]
+    is_cold_start = review_count < cold_start_threshold
+
+    # -------------------------
+    # SCORE
+    # -------------------------
+    score = health_score_service.compute_final_score(
+        vibe=vibe_norm,
+        trend=trend_norm,
+        consistency=consistency,
+        confidence=confidence,
+        is_cold_start=is_cold_start,
+        data_quality=data_quality,
+        config=config
+    )
+
+    # -------------------------
+    # LABELS
+    # -------------------------
+    health_label = health_score_service.map_business_health_label(score)
+    consistency_label = health_score_service.map_consistency(consistency, review_count)
+    confidence_label = health_score_service.map_confidence(confidence, review_count)
+
+    # -------------------------
+    # RESPONSE
+    # -------------------------
+    return health_score_service.build_health_response(
+        score=score,
+        raw_vibe=vibe_score,
+        trend=trend,
+        review_count=review_count,
+        data_quality=data_quality,
+        is_cold_start=is_cold_start,
+        vibe_norm=vibe_norm,
+        trend_norm=trend_norm,
+        consistency=consistency,
+        confidence=confidence,
+        health_label=health_label,
+        consistency_label=consistency_label,
+        confidence_label=confidence_label
+    )
 class AnalyticsService:
 
-    @staticmethod
-    async def compute_business_health(
-        vibe_score: float,
-        trend: str,
-        aspects: dict,
-        review_count: int
-    ):
-        """
-        Computes business health using raw signals + UX mapping layer.
-        """
-
-        # -------------------------
-        # 1. VIBE SCORE (raw + normalized)
-        # -------------------------
-        raw_vibe = vibe_score  # keep original (e.g. 4.3 / 5)
-        vibe_norm = (vibe_score - 1) / 4
-        vibe_norm = max(0, min(1, vibe_norm))
-
-        # -------------------------
-        # 2. TREND SCORE
-        # -------------------------
-        trend_map = {
-            "improving": 1,
-            "stable": 0,
-            "declining": -1
-        }
-
-        trend_raw = trend_map.get(trend, 0)
-        trend_norm = (trend_raw + 1) / 2
-
-        # -------------------------
-        # 3. ASPECT CONSISTENCY
-        # -------------------------
-        aspect_values = [
-            aspect["avg_score"]
-            for aspect in aspects.values()
-            if isinstance(aspect, dict) and "avg_score" in aspect
-        ]
-
-        if aspect_values:
-            norm_vals = [(v + 1) / 2 for v in aspect_values]
-            spread = np.std(norm_vals)
-            consistency = 1 / (1 + spread)
-        else:
-            consistency = 0.5
-
-        consistency = max(0, min(1, consistency))
-
-        # -------------------------
-        # 4. CONFIDENCE
-        # -------------------------
-        confidence = min(review_count / 100, 1)
-
-        # -------------------------
-        # 5. FINAL SCORE (0–1)
-        # -------------------------
-        score = (
-            vibe_norm * 0.4 +
-            trend_norm * 0.25 +
-            consistency * 0.2 +
-            confidence * 0.15
-        )
-
-        score = max(0, min(1, score))
-
-        # -------------------------
-        # 6. UX MAPPING (NOW USED CORRECTLY)
-        # -------------------------
-        vibe_label = map_business_health_label(score)
-        consistency_label = map_consistency(consistency)
-        confidence_label = map_confidence(confidence)
-
-        # -------------------------
-        # RETURN
-        # -------------------------
-        return {
-            "score": float(score),
-
-            # raw + normalized signals (IMPORTANT for UI clarity)
-            "raw": {
-                "vibe_score": raw_vibe
-            },
-
-            "label": vibe_label["label"],
-
-            "breakdown": {
-                "vibe": float(vibe_norm),
-                "trend": float(trend_norm),
-                "consistency": float(consistency),
-                "confidence": float(confidence)
-            },
-
-            # UX enrichment layer (THIS is what frontend should show in tooltips)
-            "insights": {
-                "consistency": consistency_label,
-                "confidence": confidence_label,
-                "health": vibe_label
-            }
-        }
+    
         
     # --------------------------
     # SENTIMENT ANALYTICS

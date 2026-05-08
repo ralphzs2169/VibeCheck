@@ -1,4 +1,5 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { GraphIcon } from "../icons/AnalyticsIcons";
 
 const COLORS = {
     positive: "#22c55e",
@@ -17,7 +18,7 @@ const CustomTooltip = ({ active, payload }) => {
         const { name, value } = payload[0];
 
         return (
-            <div className="bg-white border border-gray-100 shadow-lg rounded-xl px-3 py-2 text-sm">
+            <div className="bg-white border z-100 border-gray-100 shadow-lg rounded-xl px-3 py-2 text-sm">
                 <p className="font-semibold" style={{ color: COLORS[name] }}>
                     {LABELS[name]}: {value}%
                 </p>
@@ -47,19 +48,22 @@ function SentimentPieChart({ distribution = {} }) {
                     Sentiment Distribution
                 </h2>
 
-                <div className="h-[220px] flex flex-col items-center justify-center gap-3 text-center">
-                    <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-2xl">
-                        🍩
+                <div className="h-[320px] flex flex-col items-center justify-center gap-3 text-center px-6">
+                    <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-300">
+                        <GraphIcon className="w-6 h-6" />
                     </div>
-                    <p className="font-medium text-gray-700">
-                        No distribution data yet
-                    </p>
+                    <div>
+                        <p className="font-medium text-gray-700">No distribution data yet</p>
+                         <p className="text-xs text-gray-400">
+                            Not enough reviews to show sentiment distribution
+                        </p>
+                    </div>
                 </div>
             </div>
         );
     }
 
-    // ✅ FIXED: proper dominant detection
+    //  FIXED: proper dominant detection
     const sorted = [...chartData].sort((a, b) => b.value - a.value);
 
     const top = sorted[0];

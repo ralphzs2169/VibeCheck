@@ -4,7 +4,7 @@ import {
     StableIcon,
 } from "../icons/TrendIcons";
 
-function MetricCard({ label, value, subtitle, badge, trend, vibeStatus }) {
+function MetricCard({ label, value, subtitle, badge, trend, vibeStatus, vibeScore = false }) {
     const badgeColor =
         badge?.type === "stable"
             ? "bg-green-50 text-green-600"
@@ -45,8 +45,12 @@ function MetricCard({ label, value, subtitle, badge, trend, vibeStatus }) {
             ? "Declining"
             : "Stable";
 
+    const cardClass = vibeScore
+        ? "bg-gradient-to-br from-[#E6F0FA] via-[#D6E8FA] to-[#C2DCF6] border-[#004687]/25 shadow-[0_12px_26px_rgba(0,70,135,0.14)]"
+        : "bg-white border-gray-100 shadow-sm";
+
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col gap-1">
+        <div className={`rounded-2xl border p-6 flex flex-col gap-1 h-full ${cardClass}`}>
 
             {/* header */}
             <div className="flex items-center justify-between mb-1">

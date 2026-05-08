@@ -72,6 +72,51 @@ MIN_SPLIT_PART_LENGTH = 4
 # ANALYTICS CONSTANTS
 # --------------------------
 
+# Thresholds for determining overall business health and UI presentation
+BUSINESS_HEALTH_CONFIG = {
+    "trend": {
+        "mapping": {
+            "improving": 1,
+            "stable": 0,
+            "declining": -1,
+            "insufficient_data": 0
+        }
+    },
+
+    "weights": {
+        "vibe": 0.4,
+        "trend": 0.25,
+        "consistency": 0.2,
+        "confidence": 0.15
+    },
+
+    "cold_start_weights": {
+        "vibe": 0.7,
+        "consistency": 0.3
+    },
+
+    "aspects": {
+        "min_aspects": 2,
+        "default_consistency": 0.5,
+        "stability_sensitivity": 2.0
+    },
+
+    "confidence": {
+        "half_saturation_reviews": 10,
+        "min_score": 3,
+        "low_weight": 0.3,
+        "mid_weight": 0.7
+    },
+
+    "data_quality_weights": {
+        "no_data": 0.3,
+        "very_low": 0.5,
+        "low": 0.7,
+        "moderate": 0.9,
+        "high": 1.0
+    }
+}
+
 # Sentiment Thresholds
 
 MIN_SENTIMENT_TIMESERIES_POINTS = 5

@@ -46,6 +46,18 @@ function OwnerSidebar({ business }) {
         >
           Reviews
         </NavLink>
+         <NavLink
+          to="/business/reviews"
+          className={({ isActive }) =>
+            `block px-4 py-2 rounded-lg transition ${
+              isActive
+                ? "bg-[#004687] text-white"
+                : "text-gray-700 hover:bg-gray-100"
+            }`
+          }
+        >
+          Analytics
+        </NavLink>
       </nav>
     </div>
   );
