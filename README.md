@@ -53,7 +53,7 @@ pip install -r requirements.txt
 
 ---
 
-## 4. Run Database Seed Script (optional but recommended)
+## 4. Run Database Seed Script 
 
 This populates the database with sample:
 - users
@@ -115,28 +115,6 @@ npm run build
 npm run preview
 ```
 
-If you still use the Streamlit app for quick demos, follow these steps instead:
-
-Open a new terminal, activate your Python venv and run:
-
-### Windows
-```bash
-.\.venv\Scripts\Activate
-```
-
-### Mac/Linux
-```bash
-source .venv/bin/activate
-```
-
-Then run Streamlit (optional):
-
-```bash
-streamlit run frontend/app.py
-```
-
----
-
 ## 7. Run Tests
 
 ```bash
@@ -168,7 +146,7 @@ VibeCheck/
 
 ## Notes
 
-- Ensure backend is running before opening Streamlit frontend.
+- Ensure backend is running before opening React frontend.
 - First startup may take longer because HuggingFace models download automatically.
 
 Models used:
