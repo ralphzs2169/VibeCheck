@@ -70,6 +70,9 @@ python -m backend.app.scripts.seed
 ## 5. Run FastAPI Backend
 
 ```bash
+# From project root - use uvicorn (recommended) or the fastapi CLI if you have it installed
+uvicorn backend.app.main:app --reload --port 8000
+# or
 fastapi dev backend/app/main.py
 ```
 
@@ -87,11 +90,34 @@ http://127.0.0.1:8000/docs
 
 ---
 
-## 6. Run Streamlit Frontend
+## 6. Run React Frontend (Vite)
 
-Open a **new terminal**.
+Open a **new terminal** and start the React frontend (Vite). This project includes a React app under `frontend/`.
 
-Activate virtual environment again:
+Install dependencies and run the dev server:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The dev server (Vite) typically runs at:
+
+```bash
+http://localhost:5173
+```
+
+To produce a production build and preview it locally:
+
+```bash
+npm run build
+npm run preview
+```
+
+If you still use the Streamlit app for quick demos, follow these steps instead:
+
+Open a new terminal, activate your Python venv and run:
 
 ### Windows
 ```bash
@@ -103,16 +129,10 @@ Activate virtual environment again:
 source .venv/bin/activate
 ```
 
-Run Streamlit:
+Then run Streamlit (optional):
 
 ```bash
 streamlit run frontend/app.py
-```
-
-Frontend runs at:
-
-```bash
-http://localhost:8501
 ```
 
 ---
