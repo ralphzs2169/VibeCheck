@@ -21,6 +21,21 @@ VIBE_LABELS = {
     "high_negative": "Highly Negative"
 }
 
+
+
+
+VIBE_LABEL_CONFIG = {
+    "thresholds": {
+        "very_positive": 4.5,
+        "positive": 4.0,
+        "slightly_positive": 3.5,
+        "mixed": 3.0,
+        "slightly_negative": 2.5,
+        "negative": 2.0,
+        "very_negative": 1.5
+    }
+}
+
 VIBE_UI_MAP = {
     "high_positive": {"type": "stable", "ui_label": "Highly Positive"},
     "positive": {"type": "stable", "ui_label": "Positive"},
@@ -116,6 +131,118 @@ BUSINESS_HEALTH_CONFIG = {
         "high": 1.0
     }
 }
+
+
+STABILITY_CONFIG = {
+    "thresholds": {
+        "sentiment_volatility": 0.35,
+        "vibe_volatility": 0.30
+    },
+
+    "bands": {
+        "stable": 0.5,
+        "mixed": 1.0
+    }
+}
+
+
+
+PRIMARY_RISK_DRIVER_CONFIG = {
+    "weights": {
+        "negativity": 0.45, # most important signal for risk
+        "frequency": 0.3, # more mentions = more important
+        "trend": 0.25 # declining trends increase risk, improving trends decrease risk
+        # NOTE: confidence moved to metadata only (data quality indicator, not a signal)
+    },
+
+    "trend": {
+        "mapping": {
+            "improving": -1.0, # improving trends strongly reduce risk (normalized symmetric)
+            "stable": 0.0, # stable trends have no impact on risk
+            "declining": 1.0, # declining trends increase risk (normalized symmetric)
+            "insufficient_data": 0.0
+        }
+    },
+
+    "thresholds": {
+        # ADAPTIVE: these baselines scale based on sample_size
+        # see _get_adaptive_risk_threshold() in insights_service
+        "high_impact_base": 70,
+        "medium_impact_base": 40,
+        "low_impact": 0
+    },
+
+    "frequency": {
+        "half_saturation_mentions": 10 # after 10 mentions, frequency score is maxed out
+    },
+
+    "reliability": {
+        "min_aspect_mentions": 5 # minimum samples required for reliable assessment
+    }
+}
+
+
+POSITIVE_DRIVER_CONFIG = {
+    "weights": {
+        "sentiment": 0.5,
+        "frequency": 0.2,
+        "trend": 0.3
+        # NOTE: confidence moved to metadata only (data quality indicator, not a signal)
+    },
+
+    "trend": {
+        "mapping": {
+            "improving": 1.0, # improving trends increase positive signal (normalized symmetric)
+            "stable": 0.0, # stable trends have no impact
+            "declining": -1.0, # declining trends reduce positive signal (normalized symmetric)
+            "insufficient_data": 0.0
+        }
+    },
+
+    "thresholds": {
+        # ADAPTIVE: these baselines scale based on sample_size
+        # see _get_adaptive_positive_threshold() in insights_service
+        "strong_base": 70,
+        "moderate_base": 40,
+        "weak": 0
+    },
+
+    "frequency": {
+        "half_saturation_mentions": 10
+    },
+
+    "reliability": {
+        "min_aspect_mentions": 5 # minimum samples required for reliable assessment
+    }
+}
+
+# Negative Signal Thresholds for identifying specific risk signals in reviews (used in insights and analytics)
+MIN_NEGATIVE_SIGNAL_POINTS = 5 
+
+ASPECT_INTELLIGENCE_CONFIG = {
+    "weights": {
+        "risk": {
+            "negativity": 0.45,
+            "trend": 0.3,
+            "volatility": 0.15,
+            "frequency": 0.1
+        },
+        "positive": {
+            "sentiment": 0.5,
+            "trend": 0.3,
+            "stability": 0.2
+        }
+    },
+
+    "frequency": {
+        "half_saturation_mentions": 10
+    }
+    
+    # NOTE: action logic uses DOMINANCE-BASED selection, not thresholds
+    # thresholds removed to prevent false positives on small datasets
+    # See compute_aspect_intelligence() for dominance logic
+}
+
 
 # Sentiment Thresholds
 

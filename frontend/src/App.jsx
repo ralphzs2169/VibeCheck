@@ -11,6 +11,7 @@ import BusinessProfileManagement from "./pages/business_owner/BusinessProfileMan
 import BusinessReviews from "./pages/business_owner/BusinessReviews.jsx";
 import RoleProtectedRoute from "./components/security/RoleProtectedRoute.jsx";
 import GuestRoute from "./components/security/GuestRoute.jsx";
+import BusinessAnalytics from "./pages/business_owner/BusinessAnalytics.jsx";
 
 
 function App() {
@@ -64,8 +65,11 @@ function App() {
           <Route path="dashboard" element={<BusinessDashboard />} />
           <Route path="profile-management" element={<BusinessProfileManagement />} />
           <Route path="reviews" element={<BusinessReviews />} />
+          <Route path="analytics" element={<BusinessAnalytics />} />
         </Route>
       </Routes>
+
+
 
     </>
   );

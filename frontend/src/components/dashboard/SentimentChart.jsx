@@ -33,15 +33,14 @@ const CustomTooltip = ({ active, payload, label }) => {
 function transformData(rawData = []) {
     return rawData.map((item) => {
         const score = item.avg_score;
-        let positive = 0, neutral = 0, negative = 0;
+        let positive = 0, negative = 0;
 
         if (score >= 0.05) positive = Math.round(score * 100);
         else if (score <= -0.05) negative = Math.round(Math.abs(score) * 100);
-        else neutral = 100;
 
         const label = item.period?.slice(5) ?? item.period;
 
-        return { period: label, positive, neutral, negative };
+        return { period: label, positive, negative };
     });
 }
 
@@ -112,9 +111,8 @@ function SentimentChart({ data = [], meta = {} }) {
 
                         <Legend />
 
-                        <Area dataKey="positive" stroke="#22c55e" fill="#22c55e" />
-                        <Area dataKey="neutral" stroke="#94a3b8" fill="#94a3b8" />
-                        <Area dataKey="negative" stroke="#ef4444" fill="#ef4444" />
+                                <Area dataKey="positive" stroke="#22c55e" fill="#22c55e" />
+                                <Area dataKey="negative" stroke="#ef4444" fill="#ef4444" />
                     </AreaChart>
                 </ResponsiveContainer>
             )}

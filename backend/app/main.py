@@ -25,6 +25,7 @@ from backend.app.routers import (
     reviews,
     users,
     vibe_snapshots,
+    dashboard
 )
 
 # BASE_DIR is the parent directory of the current file's parent directory (i.e., the root of the project)
@@ -79,7 +80,7 @@ async def lifespan(app: FastAPI):
     # Initialize KeyBERT with the same embedding model for consistent vector representations
     keyword_extractor_model = KeyBERT(model=embedding_model)
 
-    # Initialize Gemini model
+    # Initialize LLM
     llm_api_key = os.getenv("LLM_API_KEY")
 
     if not llm_api_key:
@@ -123,11 +124,12 @@ app = FastAPI(lifespan=lifespan)
 
 # Routes
 app.include_router(homepage.router, prefix="/api/homepage", tags=["homepage"])
+app.include_router(dashboard.router, prefix="/api/business/dashboard", tags=["dashboard"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(reviews.router, prefix="/api/reviews", tags=["reviews"])
 app.include_router(businesses.router, prefix="/api/businesses", tags=["businesses"])
-app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
+app.include_router(analytics.router, prefix="/api/business/analytics", tags=["analytics"])
 app.include_router(vibe_snapshots.router, prefix="/api/vibe-snapshots", tags=["vibe_snapshots"])
 
 app.mount("/uploads", StaticFiles(directory=str(uploads_path)), name="uploads")

@@ -29,17 +29,19 @@ const CustomTooltip = ({ active, payload }) => {
 };
 
 function SentimentPieChart({ distribution = {} }) {
-    const entries = Object.entries(distribution).filter(
-        ([, v]) => v.count > 0
-    );
+    // Accept both shapes: flat map { positive: {count, percentage}, ... }
+    // or wrapper { distribution: { ... }, total_reviews, meta }
+    const raw = distribution?.distribution ?? distribution ?? {};
+
+    const entries = Object.entries(raw).filter(([, v]) => Number(v?.count) > 0);
 
     const chartData = entries.map(([key, val]) => ({
         name: key,
-        value: val.percentage,
-        count: val.count,
+        value: Number(val?.percentage ?? 0),
+        count: Number(val?.count ?? 0),
     }));
 
-    const total = entries.reduce((sum, [, v]) => sum + v.count, 0);
+    const total = entries.reduce((sum, [, v]) => sum + Number(v?.count ?? 0), 0);
 
     if (total === 0) {
         return (

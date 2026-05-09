@@ -66,10 +66,10 @@ function BusinessDashboard() {
     const aspects = business?.aspects || [];
     const business_health = business?.business_health || {};
 
-    const sentimentOverTime = business?.get_sentiment_over_time || {};
+    const sentimentOverTime = business?.sentiment_over_time || {};
     const forecastSentiment = business?.forecast_vibe || business?.forecast_sentiment || {};
 
-    const sentimentDistribution = business?.get_sentiment_distribution?.distribution || {};
+    const sentimentDistribution = business?.sentiment_distribution || {};
 
     const vibeTrend = business?.vibe_score_trend || {};
 

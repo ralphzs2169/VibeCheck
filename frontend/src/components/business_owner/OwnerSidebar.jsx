@@ -47,7 +47,7 @@ function OwnerSidebar({ business }) {
           Reviews
         </NavLink>
          <NavLink
-          to="/business/reviews"
+          to="/business/analytics"
           className={({ isActive }) =>
             `block px-4 py-2 rounded-lg transition ${
               isActive

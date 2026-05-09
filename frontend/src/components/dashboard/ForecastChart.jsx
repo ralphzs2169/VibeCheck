@@ -69,6 +69,16 @@ function ForecastTooltip({ active, payload }) {
 	);
 }
 
+const VIBE_LABEL_META = {
+	very_positive: { label: "Very Positive", badge: "bg-green-50 text-green-700 border-green-100" },
+	positive: { label: "Positive", badge: "bg-green-50 text-green-700 border-green-100" },
+	slightly_positive: { label: "Slightly Positive", badge: "bg-emerald-50 text-emerald-700 border-emerald-100" },
+	mixed: { label: "Mixed", badge: "bg-gray-50 text-gray-700 border-gray-100" },
+	slightly_negative: { label: "Slightly Negative", badge: "bg-amber-50 text-amber-700 border-amber-100" },
+	negative: { label: "Negative", badge: "bg-red-50 text-red-700 border-red-100" },
+	very_negative: { label: "Very Negative", badge: "bg-red-50 text-red-700 border-red-100" },
+};
+
 export default function SentimentForecastChart({ data = {} }) {
 	const meta = data?.meta ?? {};
 
@@ -87,12 +97,7 @@ export default function SentimentForecastChart({ data = {} }) {
 
 	const predictedVibe = data?.predicted_vibe || "mixed";
 	const forecastScore = Number(data?.forecast_score);
-
-	const vibeBadge = {
-		positive: "bg-green-50 text-green-700 border-green-100",
-		negative: "bg-red-50 text-red-700 border-red-100",
-		mixed: "bg-gray-50 text-gray-700 border-gray-100",
-	}[predictedVibe];
+	const vibeMeta = VIBE_LABEL_META[predictedVibe] || VIBE_LABEL_META.mixed;
 
 	return (
 		<div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
@@ -107,8 +112,8 @@ export default function SentimentForecastChart({ data = {} }) {
 				</div>
 
 				<div className="flex gap-2">
-					<span className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${vibeBadge}`}>
-						{predictedVibe}
+					<span className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${vibeMeta.badge}`}>
+						{vibeMeta.label}
 					</span>
 
 					{meta?.is_reliable === false && (

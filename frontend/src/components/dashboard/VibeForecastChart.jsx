@@ -66,10 +66,52 @@ function mergeHistoryAndForecast(payload = {}) {
 }
 
 function getVibeLabel(score) {
-    if (score >= 3.5) return "Positive";
-    if (score <= 2.5) return "Negative";
-    return "Mixed";
+    if (score >= 4.5) return "Very Positive";
+    if (score >= 4.0) return "Positive";
+    if (score >= 3.5) return "Slightly Positive";
+    if (score >= 3.0) return "Mixed";
+    if (score >= 2.5) return "Slightly Negative";
+    if (score >= 2.0) return "Negative";
+    return "Very Negative";
 }
+
+const VIBE_LABEL_META = {
+    very_positive: {
+        label: "Very Positive",
+        badge: "bg-green-50 text-green-700",
+        insight: "Forecast suggests a strongly positive direction in upcoming months.",
+    },
+    positive: {
+        label: "Positive",
+        badge: "bg-green-50 text-green-700",
+        insight: "Forecast suggests a positive trend in upcoming months.",
+    },
+    slightly_positive: {
+        label: "Slightly Positive",
+        badge: "bg-emerald-50 text-emerald-700",
+        insight: "Forecast suggests a mild improvement in upcoming months.",
+    },
+    mixed: {
+        label: "Mixed",
+        badge: "bg-gray-50 text-gray-700",
+        insight: "Forecast shows no strong directional shift.",
+    },
+    slightly_negative: {
+        label: "Slightly Negative",
+        badge: "bg-amber-50 text-amber-700",
+        insight: "Forecast suggests a mild decline in upcoming months.",
+    },
+    negative: {
+        label: "Negative",
+        badge: "bg-red-50 text-red-700",
+        insight: "Forecast suggests a declining trend in upcoming months.",
+    },
+    very_negative: {
+        label: "Very Negative",
+        badge: "bg-red-50 text-red-700",
+        insight: "Forecast suggests a strongly declining trend in upcoming months.",
+    },
+};
 
 /* -----------------------------
    TOOLTIP
@@ -116,19 +158,7 @@ export default function VibeForecastChart({ data = {} }) {
     const forecastEnd = dataset.at(-1)?.period;
 
     const vibe = data.predicted_vibe || "mixed";
-
-    const vibeBadge = {
-        positive: "bg-green-50 text-green-700",
-        negative: "bg-red-50 text-red-700",
-        mixed: "bg-gray-50 text-gray-700",
-    }[vibe];
-
-    const insightText =
-        vibe === "positive"
-            ? "Forecast suggests a positive trend in upcoming months."
-            : vibe === "negative"
-            ? "Forecast suggests a declining trend in upcoming months."
-            : "Forecast shows no strong directional shift.";
+    const vibeMeta = VIBE_LABEL_META[vibe] || VIBE_LABEL_META.mixed;
 
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
@@ -145,8 +175,8 @@ export default function VibeForecastChart({ data = {} }) {
                 </div>
 
                 {!isInsufficient && (
-                    <div className={`text-xs font-semibold px-3 py-1 rounded-full ${vibeBadge}`}>
-                        {vibe.charAt(0).toUpperCase() + vibe.slice(1)}
+                    <div className={`text-xs font-semibold px-3 py-1 rounded-full ${vibeMeta.badge}`}>
+                        {vibeMeta.label}
                     </div>
                 )}
             </div>
@@ -230,7 +260,7 @@ export default function VibeForecastChart({ data = {} }) {
                     <p className="text-sm font-medium text-gray-700 mb-1">
                         Forecast Insight
                     </p>
-                    <p className="text-sm text-gray-500">{insightText}</p>
+                    <p className="text-sm text-gray-500">{vibeMeta.insight}</p>
                 </div>
             )}
         </div>

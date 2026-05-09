@@ -1,0 +1,165 @@
+import numpy as np
+import pandas as pd
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.app.core.constants import (
+        CONFIDENCE_SENTIMENT_WEIGHT,
+        CONFIDENCE_VOLUME_WEIGHT,
+        MIN_SPIKE_DATA_POINTS,
+        Z_SCORE_SENTIMENT_THRESHOLD,
+        Z_SCORE_VOLUME_THRESHOLD,
+)
+from backend.app.models.review import Review
+from backend.app.services.analytics.helpers import reliability
+
+
+def stable_z(series):
+    """ 
+    Z-score calculation with stability adjustments to prevent extreme values when variance is low.
+    This helps ensure that our event detection is not overly sensitive to small fluctuations
+    when data is limited or when sentiment/volume is very stable.
+    """
+    std = np.std(series)
+    if std == 0:
+        std = 1.0
+    return (series - np.mean(series)) / std
+
+
+
+async def get_review_event_detection(db: AsyncSession, business_id: int):
+    """
+    Detects significant shifts in customer experience by analyzing daily sentiment and review volume.
+    Combines both sentiment and volume signals to identify potential events impacting customer experience.
+        
+    Returns an event type: 
+    - true_event (significant change in both sentiment and volume, likely indicating a real issue),
+    - sentiment_event (change in sentiment only),
+    - activity_event (change in review volume only),
+    - emerging_event (potential issue based on trends),
+    - no_anomaly (no significant changes detected) along with confidence level and interpretation.
+    """
+    stmt = (
+        select(
+            func.date(Review.created_at).label("date"),
+            func.avg(Review.sentiment_score).label("avg_sentiment"),
+            func.count(Review.id).label("count"),
+            func.extract("dow", Review.created_at).label("weekday")
+        )
+        .where(Review.business_id == business_id)
+        .group_by(func.date(Review.created_at), func.extract("dow", Review.created_at))
+        .order_by(func.date(Review.created_at))
+    )
+
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    if len(rows) < MIN_SPIKE_DATA_POINTS:
+        return {
+            "event_type": "insufficient_data",
+            "confidence": 0,
+            "interpretation": "Not enough customer reviews yet to detect meaningful changes.",
+            "meta": reliability(len(rows), MIN_SPIKE_DATA_POINTS)
+        }
+
+    df = pd.DataFrame(rows, columns=["date", "sentiment", "volume", "weekday"])
+
+
+    # Seasonality adjustment: Remove average weekday effects to focus on underlying changes
+    weekday_baseline_sentiment = df.groupby("weekday")["sentiment"].mean()
+    weekday_baseline_volume = df.groupby("weekday")["volume"].mean()
+
+    df["sentiment_deseasonalized"] = df.apply(
+        lambda r: r["sentiment"] - weekday_baseline_sentiment[r["weekday"]],
+        axis=1
+    )
+
+    df["volume_deseasonalized"] = df.apply(
+        lambda r: r["volume"] - weekday_baseline_volume[r["weekday"]],
+        axis=1
+    )
+
+    # Trend adjustment: Remove longer-term trends using rolling average to focus on recent shifts
+    df["sentiment_trend"] = df["sentiment_deseasonalized"].rolling(7, min_periods=3).mean()
+    df["volume_trend"] = df["volume_deseasonalized"].rolling(7, min_periods=3).mean()
+
+    df["sentiment_trend"] = df["sentiment_trend"].fillna(
+        df["sentiment_deseasonalized"].mean()
+    )
+    df["volume_trend"] = df["volume_trend"].fillna(
+        df["volume_deseasonalized"].mean()
+    )
+
+    # Residual calculation: Focus on deviations from normal behavior after removing seasonality and trends
+    df["sentiment_residual"] = df["sentiment_deseasonalized"] - df["sentiment_trend"]
+    df["volume_residual"] = df["volume_deseasonalized"] - df["volume_trend"]
+
+    # Z-score calculation with stability adjustments to identify significant deviations in sentiment and volume
+    sentiment_z = stable_z(df["sentiment_residual"])
+    volume_z = stable_z(df["volume_residual"])
+
+    latest_sentiment_z = sentiment_z.iloc[-1]
+    latest_volume_z = volume_z.iloc[-1]
+
+    # Event classification based on combined sentiment and volume signals, with confidence weighting to reflect strength of signals and data reliability
+    sentiment_spike = abs(latest_sentiment_z) > Z_SCORE_SENTIMENT_THRESHOLD
+    volume_spike = abs(latest_volume_z) > Z_SCORE_VOLUME_THRESHOLD
+
+    if sentiment_spike and volume_spike:
+        event_type = "true_event"
+        interpretation = (
+            "There is a clear shift in customer experience, "
+            "with changes in both sentiment and review activity. "
+            "This likely reflects a real operational or customer-facing issue."
+        )
+
+    elif sentiment_spike:
+        event_type = "sentiment_event"
+        interpretation = (
+            "Customers are expressing noticeably different opinions than usual, "
+            "even though review activity remains normal."
+        )
+
+    elif volume_spike:
+        event_type = "activity_event"
+        interpretation = (
+            "There is unusual review activity compared to normal patterns, "
+            "but customer sentiment has not changed significantly."
+        )
+
+    elif abs(latest_sentiment_z) > 1.5 or abs(latest_volume_z) > 1.5:
+        event_type = "emerging_event"
+        interpretation = (
+            "Early signs of change detected in customer feedback. "
+            "This may indicate a developing issue worth monitoring."
+        )
+
+    else:
+        event_type = "no_anomaly"
+        interpretation = (
+            "Customer experience is stable with no unusual changes detected."
+        )
+
+    # Confidence calculation based on strength of signals and data reliability, with weighting to reflect importance of sentiment and volume changes and adjustments for data quality
+    confidence_raw = (
+        min(abs(latest_sentiment_z), 3) * CONFIDENCE_SENTIMENT_WEIGHT +
+        min(abs(latest_volume_z), 3) * CONFIDENCE_VOLUME_WEIGHT
+    )
+
+    confidence = int(min(100, confidence_raw * 25))
+    confidence *= min(len(rows) / MIN_SPIKE_DATA_POINTS, 1.0)
+    confidence = int(confidence)
+
+    return {
+        "event_type": event_type,
+        "confidence": confidence,
+        "z_scores": {
+            "sentiment_z": float(latest_sentiment_z),
+            "volume_z": float(latest_volume_z)
+        },
+        "baseline": {
+            "note": "Compared against normal weekly behavior and recent trends"
+        },
+        "interpretation": interpretation,
+        "meta": reliability(len(rows), MIN_SPIKE_DATA_POINTS)
+    }
