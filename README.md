@@ -1,15 +1,26 @@
 # VibeCheck
 
-## Tech Stack (current)
+## Tech Stack
+
+### Backend
 - FastAPI
 - SQLAlchemy
 - SQLite
-- Streamlit
+
+### Frontend
+- React
+- Tailwind CSS
+- Recharts
+- Lucide React
+
+### AI / NLP
 - Transformers (DistilBERT)
 - KeyBERT
 - Scikit-learn
 
----
+### Data Processing & Analytics
+- Pandas
+- NumPy
 
 ## 1. Clone Repository
 
