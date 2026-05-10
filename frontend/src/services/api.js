@@ -28,7 +28,6 @@ export const updateBusinessProfile = async (payload) => {
   const response = await axios.patch("/api/businesses/profile", payload, {
     headers: {
       Authorization: `Bearer ${token}`,
-      "Content-Type": "multipart/form-data",
     },
   });
 

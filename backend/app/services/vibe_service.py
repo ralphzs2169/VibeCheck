@@ -1,3 +1,7 @@
+# Vibe summary service that computes an overall vibe score and label for a business
+# based on its reviews, and generates a concise natural-language summary of
+# key insights using keyword extraction and optional LLM enhancement.
+
 from datetime import datetime
 import logging
 
@@ -10,22 +14,27 @@ from backend.app.core.constants import (
     MINIMUM_REVIEW_COUNT,
     POLARIZATION_MIN_RATIO,
     VIBE_LABELS,
-    VIBE_NEUTRAL_HIGH,
-    VIBE_NEUTRAL_LOW,
     VIBE_THRESHOLDS,
 )
 from backend.app.core.ml_registry import MLRegistry
 from backend.app.models.review import Review
 from backend.app.services.sentiment_service import analyze_sentiment
 
+# Module logger for debug/info messages (kept after imports)
 logger = logging.getLogger(__name__)
+
 
 async def get_reviews_with_scores(
     db: AsyncSession,
     business_id: int,
     as_of_date: datetime | None = None # optional parameter to filter reviews up to a certain date for historical vibe snapshots
 ) -> list[tuple]:
+    """
+    Fetches reviews for a business along with their sentiment scores, optionally filtered by a cutoff date.
+    Returns a list of tuples containing (review_content, sentiment_score).
+    """
 
+    # Build query to select review text + sentiment score for the target business
     stmt = (
         select(Review.content, Review.sentiment_score)
         .where(Review.business_id == business_id)
@@ -49,6 +58,7 @@ def compute_sentiment_scores(reviews_with_scores: list[tuple]) -> tuple[float, l
 
 
 def get_vibe_label(score: float) -> str:
+    # Map continuous sentiment score into a discrete vibe label using thresholds
     if score >= VIBE_THRESHOLDS["high_positive"]:
         return VIBE_LABELS["high_positive"]
     elif score >= VIBE_THRESHOLDS["positive"]:
@@ -65,6 +75,7 @@ def extract_keywords(reviews: list[str], models: MLRegistry | None = None) -> li
     if not reviews:
         return []
 
+    # Concatenate reviews and extract top keyphrases using configured extractor
     text = " ".join(reviews)
     keywords = models.keyword_extractor.extract_keywords(
         text,
@@ -74,6 +85,7 @@ def extract_keywords(reviews: list[str], models: MLRegistry | None = None) -> li
         diversity=0.5,
         top_n=KEYWORD_EXTRACTION_TOP_N
     )
+    # Return only the keyword terms (ignore extractor scores here)
     return [keyword for keyword, score in keywords]
 
 
@@ -82,7 +94,9 @@ def classify_keywords(keywords: list[str], models: MLRegistry) -> tuple[list[str
     negative_keywords = []
 
     for keyword in keywords:
+        # Classify each keyword's sentiment using the sentiment model
         score, label, confidence = analyze_sentiment(keyword, models.sentiment)
+        # Only keep high-confidence classifications to avoid noisy signals
         if confidence < 0.75:
             continue
         if label == "positive":
@@ -111,6 +125,7 @@ def build_summary(
     use_ai_summary: bool = False
 ) -> str:
 
+    # Create short human-readable summary from top keywords
     insight_parts = []
     if positive_keywords:
         insight_parts.append(f"Guests frequently mention {', '.join(positive_keywords[:2])}")
@@ -121,7 +136,7 @@ def build_summary(
 
     summary = ". ".join(p.capitalize() for p in insight_parts) + "."
 
-
+    # Optionally rewrite summary using a provided LLM (kept disabled by default)
     if use_ai_summary:
         logger.info("Generating AI-enhanced summary")
         return enhance_summary_with_llm(summary, llm_model)
@@ -155,6 +170,7 @@ def enhance_summary_with_llm(
                     {summary}
                     """
 
+        # Call into the model's chat API to rewrite the summary concisely
         response = model.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[
@@ -175,10 +191,6 @@ def enhance_summary_with_llm(
         return summary
     
 
-def is_neutral(score: float) -> bool:
-    return VIBE_NEUTRAL_LOW <= score <= VIBE_NEUTRAL_HIGH
-
-
 async def compute_vibe_summary(
     db: AsyncSession,
     business_id: int,
@@ -189,10 +201,12 @@ async def compute_vibe_summary(
 ) -> dict:
     
     
+    # Fetch review texts and precomputed sentiment scores from DB
     reviews_with_scores = await get_reviews_with_scores(db, business_id, as_of_date)
     review_count = len(reviews_with_scores)
 
     # Only block if minimum review count is required AND not allowing insufficient data
+    # Respect minimum sample size unless explicitly overridden
     if not allow_insufficient_data and review_count < MINIMUM_REVIEW_COUNT:
         return {
             "status": "insufficient_data",
@@ -202,6 +216,7 @@ async def compute_vibe_summary(
         }
     
     # If no reviews at all, return insufficient data even if allowing it
+    # If there are absolutely no reviews, return early with insufficient data
     if review_count == 0:
         return {
             "status": "insufficient_data",
@@ -210,15 +225,18 @@ async def compute_vibe_summary(
             "message": "No reviews available to generate a vibe summary."
         }
 
+    # Aggregate sentiment metrics and map to a label
     avg_score, scores = compute_sentiment_scores(reviews_with_scores)
     label = get_vibe_label(avg_score)
 
     # extract keywords from reviews for additional insights in the vibe summary
     reviews_text = [content for content, _ in reviews_with_scores] 
 
+    # Extract and classify keywords from the aggregated review text
     keywords = extract_keywords(reviews_text, models)
     positive_keywords, negative_keywords = classify_keywords(keywords, models)
 
+    # Build a concise summary string (optionally enhanced via LLM)
     summary = build_summary(
         label,
         avg_score,
@@ -229,14 +247,15 @@ async def compute_vibe_summary(
         use_ai_summary=use_ai_summary
     )
 
+    # Count how many reviews fall into positive/negative buckets (for distribution)
     positive_count = sum(1 for score in scores if score > VIBE_THRESHOLDS["positive"])
     negative_count = sum(1 for score in scores if score < VIBE_THRESHOLDS["negative"])
 
-    mixed_count = sum(1 for score in scores if is_neutral(score))
 
     positive_ratio = positive_count / review_count
     negative_ratio = negative_count / review_count
 
+    # Determine whether sentiment is polarized (significant counts at both ends)
     is_polarizing = (
         review_count > 0 and
         positive_ratio > POLARIZATION_MIN_RATIO and
@@ -255,7 +274,6 @@ async def compute_vibe_summary(
         "review_count": review_count,
         "score_distribution": {
             "positive": positive_count,
-            "mixed": mixed_count,
             "negative": negative_count,
             "is_polarizing": is_polarizing
         }

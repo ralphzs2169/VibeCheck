@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { MoveRight } from 'lucide-react';
 import BusinessCard from './BusinessCard';
 import WaveBackground from './WaveBackground';
+import Bubbles from './CircleBackgroud';
+
 export default function PremiumBusinesses({ businesses = [], vibeDataMap = {} }) {
   // pick top 3 by vibe score
   const withScores = businesses.map(b => ({
@@ -17,11 +19,12 @@ export default function PremiumBusinesses({ businesses = [], vibeDataMap = {} })
 
   return (
     <section className="pt-40 pb-20 px-4 sm:px-6 lg:px-8 ">
-
+      <Bubbles />
       <div className="max-w-7xl mx-auto">
+         
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-[#0F172A]">Premium Destinations</h2>
+            <h2 className="text-2xl font-bold text-[#0F172A]">Trending Destinations</h2>
             <p className="text-sm text-slate-500 mt-1">Hand-picked resorts with the highest verified vibe scores this month.</p>
           </div>
 

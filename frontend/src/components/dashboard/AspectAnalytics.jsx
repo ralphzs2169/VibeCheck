@@ -96,6 +96,8 @@ function AspectTooltip({ aspect, trendUI }) {
 // -----------------------------
 // MAIN COMPONENT
 // -----------------------------
+import { Layers } from "lucide-react";
+
 function AspectAnalytics({
     aspects = [],
     onViewAll,
@@ -151,7 +153,7 @@ function AspectAnalytics({
                     const score = aspect?.score ?? 0;
 
                     const percent = hasData
-                        ? Math.round(((score + 1) / 2) * 100)
+                        ? Math.max(8, Math.round(((score + 1) / 2) * 100))
                         : 0;
 
                     const barColor = !hasData

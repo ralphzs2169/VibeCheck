@@ -1,3 +1,6 @@
+# This module contains functions to compute aspect-based sentiment analysis summaries and trends for a business.
+# It retrieves aspect sentiment data from the database, computes average scores, trends over time, and frequency distributions for known aspects.
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,8 +18,8 @@ from backend.app.services.analytics.helpers import reliability
 async def get_aspect_summary(db: AsyncSession, business_id: int):
     """
     Computes average sentiment score, mention count, and overall label for each aspect for a business.
-
     """
+    # Join AspectSentiment with Review to filter by business_id, then group by aspect to compute aggregates
     stmt = (
         select(
             AspectSentiment.aspect,
@@ -40,6 +43,7 @@ async def get_aspect_summary(db: AsyncSession, business_id: int):
     summary = {}
     total_mentions = 0
 
+    # Determine sentiment label based on average score and predefined thresholds, and accumulate total mentions for reliability calculation
     for row in rows:
         avg = float(row.avg_score)
         count = int(row.count)
@@ -64,6 +68,12 @@ async def get_aspect_summary(db: AsyncSession, business_id: int):
 
 
 async def get_aspect_trends(db: AsyncSession, business_id: int):
+    """
+    Computes aspect sentiment trends over time for a business by grouping aspect sentiment 
+    scores into monthly buckets and analyzing score changes.
+    """
+
+    # Group aspect sentiment scores by aspect and month, then compute average score and count for each bucket to analyze trends
     stmt = (
         select(
             AspectSentiment.aspect,
@@ -92,6 +102,8 @@ async def get_aspect_trends(db: AsyncSession, business_id: int):
     grouped = {}
     total_mentions = 0
 
+    # Group results by aspect and compute trends based on score changes over time, 
+    # while accumulating total mentions for reliability calculation
     for row in rows:
         aspect = row.aspect
         total_mentions += int(row.count)
@@ -102,6 +114,8 @@ async def get_aspect_trends(db: AsyncSession, business_id: int):
             "count": int(row.count)
         })
 
+    # Helper function to determine trend direction based on score changes,
+    # with a threshold to filter out insignificant changes
     def compute_trend(points):
         if len(points) < 2:
             return {
@@ -129,6 +143,8 @@ async def get_aspect_trends(db: AsyncSession, business_id: int):
 
     trends = {}
 
+    # Apply trend computation to each aspect's time series data and compile results, 
+    # along with reliability meta information based on total mentions
     for aspect, points in grouped.items():
         trends[aspect] = {
             "data": points,

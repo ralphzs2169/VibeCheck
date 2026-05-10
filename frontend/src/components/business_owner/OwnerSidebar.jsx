@@ -4,7 +4,7 @@ import {
   MessageSquare,
   BarChart3,
   TrendingUp,
-  Settings,
+  UserCog,
 } from "lucide-react";
 import vibecheck_logo from "../../assets/vibecheck_logo.png";
 
@@ -17,18 +17,18 @@ function OwnerSidebar({ business }) {
     },
     {
       to: "/business/reviews",
-      label: "Reviews",
+      label: "Customer Reviews",
       Icon: MessageSquare,
     },
     {
       to: "/business/analytics",
-      label: "Analytics",
+      label: "Analytics & Insights",
       Icon: BarChart3,
     },
     {
       to: "/business/profile-management",
-      label: "Settings",
-      Icon: Settings,
+      label: "Profile Management",
+      Icon: UserCog,
     },
   ];
 

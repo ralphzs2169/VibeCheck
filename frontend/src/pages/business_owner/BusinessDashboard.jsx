@@ -167,7 +167,7 @@ function BusinessDashboard() {
 
                         <AspectMentionShareChart
                             data={business?.aspect_frequency || {}}
-                            title={"What Customers Mention Most"}
+                            title={"What Customers Talk About"}
                             subtitle={"Top aspects mentioned in recent reviews"}
                             topAspectName={topAspectName}
                             topAspect={topAspect}

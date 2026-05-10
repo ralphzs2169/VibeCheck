@@ -23,7 +23,6 @@ class VibeSnapshot(Base):
     review_count: Mapped[int] = mapped_column(Integer, nullable=False)
 
     positive_count: Mapped[int] = mapped_column(Integer, nullable=False)
-    mixed_count: Mapped[int] = mapped_column(Integer, nullable=False)
     negative_count: Mapped[int] = mapped_column(Integer, nullable=False)
 
     summary_text: Mapped[str] = mapped_column(String, nullable=False)

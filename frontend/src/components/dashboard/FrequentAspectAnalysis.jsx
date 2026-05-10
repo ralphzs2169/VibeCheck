@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Tag } from "lucide-react";
 import { GraphIcon } from "../icons/AnalyticsIcons";
 
 function formatAspectLabel(term = "") {
@@ -40,9 +41,12 @@ function FrequentAspectAnalysis({ data = {} }) {
     if (!aspects.length || !hasData) {
         return (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <h2 className="text-lg font-semibold text-gray-900">
-                    Frequent Aspect Analysis
-                </h2>
+                <div className="flex items-center gap-2 mb-1">
+                    <Tag className="w-4 h-4 text-gray-600" />
+                    <h2 className="text-lg font-semibold text-gray-900">
+                        Frequent Aspect Analysis
+                    </h2>
+                </div>
 
                 <p className="text-xs text-gray-400 mt-1 mb-6">
                     Most mentioned aspects from customer reviews
@@ -69,9 +73,12 @@ function FrequentAspectAnalysis({ data = {} }) {
             {/* HEADER */}
             <div className="flex justify-between items-start mb-6">
                 <div>
-                    <h2 className="text-lg font-semibold text-gray-900">
-                        Frequent Aspect Analysis
-                    </h2>
+                    <div className="flex items-center gap-2 mb-1">
+                        <Tag className="w-4 h-4 text-gray-600" />
+                        <h2 className="text-lg font-semibold text-gray-900">
+                            Frequent Aspect Analysis
+                        </h2>
+                    </div>
                     <p className="text-xs text-gray-400 mt-0.5">
                         Most mentioned aspects from customer reviews
                     </p>

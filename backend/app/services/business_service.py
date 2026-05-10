@@ -132,7 +132,6 @@ async def get_business_homepage_feed(db: AsyncSession):
                     "review_count": vibe.review_count,
                     "summary_text": vibe.summary_text,
                     "positive_count": vibe.positive_count,
-                    "mixed_count": vibe.mixed_count,
                     "negative_count": vibe.negative_count,
                 }
                 if vibe else None
@@ -220,8 +219,10 @@ async def get_business_profile(db: AsyncSession, business_id: int) -> dict:
         select(Business)
         .where(Business.id == business_id)
         .options(
-            selectinload(Business.reviews).selectinload(Review.user),
-            selectinload(Business.reviews).selectinload(Review.aspect_sentiments),
+            selectinload(Business.reviews)
+            .selectinload(Review.user),
+            selectinload(Business.reviews)
+            .selectinload(Review.aspect_sentiments),
         )
     )
 

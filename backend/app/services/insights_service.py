@@ -1,3 +1,8 @@
+# This module contains functions to compute insights from aspect-level analytics, including:
+# - Primary risk driver: which aspect is currently the biggest source of risk to the business?
+# - Negative signals: what are the top signals indicating potential issues?
+# - Positive drivers: which aspects are currently the biggest sources of positive value?
+
 from backend.app.core.constants import (
     ASPECT_INTELLIGENCE_CONFIG,
     BUSINESS_HEALTH_CONFIG,
@@ -7,10 +12,6 @@ from backend.app.core.constants import (
 )
 from backend.app.services.analytics.helpers import reliability
 
-
-# ===================================
-# SAMPLE SIZE SENSITIVITY HELPERS
-# ===================================
 
 def _get_confidence_factor(sample_size, min_required):
     """

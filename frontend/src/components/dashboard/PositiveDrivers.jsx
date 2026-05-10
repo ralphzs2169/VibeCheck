@@ -1,11 +1,16 @@
+import { ThumbsUp } from "lucide-react";
+
 function PositiveDrivers({ data = {} }) {
     // Handle empty state
     if (data.status === "no_data" || !data.driver) {
         return (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-1">
-                    Strengths & Positive Drivers
-                </h2>
+                <div className="flex items-center gap-2 mb-1">
+                    <ThumbsUp className="w-4 h-4 text-gray-700" />
+                    <h2 className="text-lg font-semibold text-gray-900 mb-1">
+                        Strengths & Positive Drivers
+                    </h2>
+                </div>
                 <p className="text-xs text-gray-400 mb-6">
                     What customers love about this business
                 </p>
@@ -51,9 +56,12 @@ function PositiveDrivers({ data = {} }) {
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
                 <div>
-                    <h2 className="text-lg font-semibold text-gray-900">
-                        Strengths & Positive Drivers
-                    </h2>
+                    <div className="flex items-center gap-2 mb-1">
+                        <ThumbsUp className="w-4 h-4 text-gray-700" />
+                        <h2 className="text-lg font-semibold text-gray-900">
+                            Strengths & Positive Drivers
+                        </h2>
+                    </div>
                     <p className="text-xs text-gray-400 mt-0.5">
                         What customers love about this business
                     </p>

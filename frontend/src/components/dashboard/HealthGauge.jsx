@@ -262,7 +262,7 @@ function GaugeSVG({ score, status }) {
 /* -----------------------------
    MAIN COMPONENT
 ------------------------------ */
-function HealthGauge({ data }) {
+function HealthGauge({ data, showIcon = true }) {
     const status = data?.status || "computed";
     const score = status === "no_data" ? null : clamp01(data?.score);
     const [showTooltip, setShowTooltip] = useState(false);
@@ -279,7 +279,7 @@ function HealthGauge({ data }) {
             {/* HEADER */}
             <div>
                 <div className="flex items-center gap-2 mb-0.5">
-                    <Heart className="w-5 h-5 text-gray-700 fill-gray-700" />
+                    {showIcon && <Heart className="w-5 h-5 text-gray-700 fill-gray-700" />}
                     <h3 className="text-sm font-semibold text-gray-900">
                         Business Health
                     </h3>

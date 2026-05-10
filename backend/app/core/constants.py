@@ -1,6 +1,11 @@
+from pathlib import Path
+
 PASSWORD_HASH_ITERATIONS = 100_000
 HOURS_BETWEEN_SNAPSHOTS = 24
 DEFAULT_USER_ROLE = "reviewer"
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+UPLOADS_DIR = PROJECT_ROOT / "uploads"
 
 # --------------------------
 # VIBE SUMMARY CONSTANTS
@@ -92,7 +97,7 @@ BUSINESS_HEALTH_CONFIG = {
     "trend": {
         "mapping": {
             "improving": 1,
-            "stable": 0,
+            "stable": 0.8,
             "declining": -1,
             "insufficient_data": 0
         }

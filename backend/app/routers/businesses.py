@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import backend.app.services.auth_service as auth_service
 import backend.app.services.business_service as business_service
+from backend.app.core.constants import UPLOADS_DIR
 from backend.app.core.database import get_db
 from backend.app.core.dependencies import get_models
 from backend.app.core.ml_registry import MLRegistry
@@ -103,12 +104,11 @@ async def update_current_business_profile(
     business_id = business_service.resolve_user_business_id(current_user, None)
 
     if image:
-        uploads_dir = "uploads"
-        os.makedirs(uploads_dir, exist_ok=True)
+        UPLOADS_DIR.mkdir(exist_ok=True)
         _, ext = os.path.splitext(image.filename or "")
         ext = ext.lower() if ext else ".png"
         filename = f"{uuid.uuid4().hex}{ext}"
-        file_path = os.path.join(uploads_dir, filename)
+        file_path = UPLOADS_DIR / filename
 
         contents = await image.read()
         with open(file_path, "wb") as f:

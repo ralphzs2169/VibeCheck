@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import HeroSection from '../components/HeroSection';
 import SearchBar from '../components/SearchBar';
 import InsightCard from '../components/InsightCard';
@@ -12,6 +13,7 @@ import axios from 'axios';
 import WaveBackground from '../components/WaveBackground';
 
 export default function Home() {
+  const location = useLocation();
   const [businesses, setBusinesses] = useState([]);
   const [filteredBusinesses, setFilteredBusinesses] = useState([]);
   const [vibeDataMap, setVibeDataMap] = useState({});
@@ -41,13 +43,12 @@ export default function Home() {
         businesses.forEach((business) => {
           if (business.latest_vibe) {
             const vibe = business.latest_vibe;
-            const total = vibe.positive_count + vibe.mixed_count + vibe.negative_count;
+            const total = vibe.positive_count + vibe.negative_count;
             vibeMap[business.id] = {
               overall_score: vibe.vibe_score,
               sentiment_distribution: {
-                positive: total > 0 ? vibe.positive_count / total : 0.33,
-                neutral: total > 0 ? vibe.mixed_count / total : 0.33,
-                negative: total > 0 ? vibe.negative_count / total : 0.34,
+                positive: total > 0 ? vibe.positive_count / total : 0.5,
+                negative: total > 0 ? vibe.negative_count / total : 0.5,
               },
               summary: vibe.summary_text || 'Guest experiences analyzed',
             };
@@ -56,9 +57,8 @@ export default function Home() {
             vibeMap[business.id] = {
               overall_score: 0.5,
               sentiment_distribution: {
-                positive: 0.33,
-                neutral: 0.33,
-                negative: 0.34,
+                positive: 0.5,
+                negative: 0.5,
               },
               summary: 'Analyzing guest experiences...',
             };
@@ -77,6 +77,25 @@ export default function Home() {
 
     fetchBusinesses();
   }, []);
+
+  useEffect(() => {
+    const targetId = location.hash.replace('#', '');
+
+    const scrollToTarget = () => {
+      if (!targetId) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      const element = document.getElementById(targetId);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    };
+
+    const timer = window.setTimeout(scrollToTarget, 50);
+    return () => window.clearTimeout(timer);
+  }, [location.hash]);
 
   // Filter and sort businesses based on search, location, and sort criteria
   useEffect(() => {
@@ -142,15 +161,21 @@ export default function Home() {
           animate={true}       // Enable floating animation (default: false)
           className=""          // Additional Tailwind classes
         />
-      <HeroSection>
-        <SearchBar onSearch={setSearchTerm} onLocationFilter={setLocationFilter} />
-      </HeroSection>
+      <div id="home">
+        <HeroSection>
+          <SearchBar onSearch={setSearchTerm} onLocationFilter={setLocationFilter} />
+        </HeroSection>
+      </div>
 
       {/* Premium Destinations (top 3) */}
-      <PremiumBusinesses businesses={filteredBusinesses} vibeDataMap={vibeDataMap} />
+      <section id="premium-businesses" className="scroll-mt-24">
+        <PremiumBusinesses businesses={filteredBusinesses} vibeDataMap={vibeDataMap} />
+      </section>
 
       {/* Journey section */}
-      <JourneySection />
+      <section id="journey" className="scroll-mt-24">
+        <JourneySection />
+      </section>
 
     
       {/* Owner Analytics Section */}

@@ -1,3 +1,5 @@
+import { AlertCircle } from "lucide-react";
+
 function NegativeSignals({ data = {} }) {
     const getSignalText = (signal) => {
         if (typeof signal === "string") return signal;
@@ -19,9 +21,12 @@ function NegativeSignals({ data = {} }) {
     if (data.status === "no_data" || !data.signals || data.signals.length === 0) {
         return (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-1">
-                    Negative Signals
-                </h2>
+                <div className="flex items-center gap-2 mb-1">
+                    <AlertCircle className="w-4 h-4 text-gray-700" />
+                    <h2 className="text-lg font-semibold text-gray-900 mb-1">
+                        Negative Signals
+                    </h2>
+                </div>
                 <p className="text-xs text-gray-400 mb-6">
                     Key operational issues from customer feedback
                 </p>
@@ -40,9 +45,12 @@ function NegativeSignals({ data = {} }) {
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
             {/* Header */}
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">
-                Negative Signals
-            </h2>
+            <div className="flex items-center gap-2 mb-1">
+                <AlertCircle className="w-4 h-4 text-gray-700" />
+                <h2 className="text-lg font-semibold text-gray-900">
+                    Negative Signals
+                </h2>
+            </div>
             <p className="text-xs text-gray-400 mb-4">
                 Key operational issues from customer feedback
             </p>

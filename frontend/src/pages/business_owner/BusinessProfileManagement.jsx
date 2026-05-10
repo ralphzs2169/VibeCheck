@@ -96,6 +96,10 @@ function BusinessProfileManagement() {
             }
 
             const updatedBusiness = await updateBusinessProfile(payload);
+            
+            console.log("Backend response:", updatedBusiness);
+            console.log("Image path returned:", updatedBusiness?.image_path);
+            
             setForm({
                 name: updatedBusiness?.name || "",
                 location: updatedBusiness?.location || "",
@@ -107,6 +111,7 @@ function BusinessProfileManagement() {
         } catch (err) {
             const errorMessage =
                 err.response?.data?.detail || err.message || "Unable to update profile.";
+            console.error("Error updating profile:", err);
             setToast({ message: errorMessage, type: "error" });
         } finally {
             setSaving(false);

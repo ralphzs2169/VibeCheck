@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { Calendar } from "lucide-react";
 import { GraphIcon } from "../icons/AnalyticsIcons";
 import ReviewProgressState from "./ReviewProgressState";
 
@@ -172,7 +173,10 @@ export default function VibeHeatmap({ data = {}, vibeOverTime = {} }) {
       {/* header */}
       <div className="flex items-start justify-between mb-5">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Vibe Heatmap</h2>
+          <div className="flex items-center gap-2 mb-1">
+            <Calendar className="w-4 h-4 text-gray-600" />
+            <h2 className="text-lg font-semibold text-gray-900">Vibe Heatmap</h2>
+          </div>
           <p className="text-xs text-gray-400 mt-0.5">Daily vibe snapshot · last 90 days</p>
         </div>
         <Legend />

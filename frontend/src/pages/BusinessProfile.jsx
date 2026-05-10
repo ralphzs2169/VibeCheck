@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import axios from 'axios';
-
+import getVibeLevelFromScore from '../utils/vibeLabel';
 import WaveBackground from '../components/WaveBackground';
 import ProfileSidebar from '../components/business_profile/ProfileSidebar';
 import ProfileContent from '../components/business_profile/ProfileContent';
@@ -54,16 +54,6 @@ export default function BusinessProfile() {
       document.body.style.overflow = originalOverflow;
     };
   }, []);
-
-  const getVibeLabel = (score) => {
-    if (score >= 4.5) return 'Exceptional';
-    if (score >= 4) return 'Excellent';
-    if (score >= 3.5) return 'Great';
-    if (score >= 3) return 'Good';
-    if (score >= 2.5) return 'Fair';
-    if (score >= 2) return 'Okay';
-    return 'Needs Work';
-  };
 
   if (isLoading) {
     return (
@@ -128,7 +118,7 @@ export default function BusinessProfile() {
         <ProfileSidebar
           business={business}
           latestVibe={latestVibe}
-          getVibeLabel={getVibeLabel}
+          getVibeLevelFromScore={getVibeLevelFromScore}
         />
 
         <ProfileContent

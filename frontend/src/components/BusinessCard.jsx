@@ -1,10 +1,11 @@
+import { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, MapPin } from 'lucide-react';
 import { BASE_URL } from '../services/api';
 import ImagePlaceholder from './icons/ImagePlaceholder';
 import getVibeLevelFromScore from '../utils/vibeLabel';
 
-export default function BusinessCard({ business, vibeData }) {
+function BusinessCard({ business, vibeData }) {
 
   const navigate = useNavigate();
   
@@ -24,6 +25,8 @@ export default function BusinessCard({ business, vibeData }) {
       onClick={handleViewInsights}
       className="bg-white border border-[#E2E8F0] rounded-xs shadow-sm hover:shadow-lg hover:-translate-y-1 transform-gpu transition-all overflow-hidden group cursor-pointer"
     >
+
+      
       {/* Image Container */}
       <div className="relative overflow-hidden rounded-t-xs">
         <div className="w-full h-56 md:h-48 lg:h-56 xl:h-64">
@@ -31,6 +34,8 @@ export default function BusinessCard({ business, vibeData }) {
           <img
             src={`${BASE_URL}${business.image_path}`}
             alt={business.name}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
@@ -81,6 +86,8 @@ export default function BusinessCard({ business, vibeData }) {
     </div>
   );
 }
+
+export default memo(BusinessCard);
 
 function formatNumber(n) {
   return Intl.NumberFormat().format(n);

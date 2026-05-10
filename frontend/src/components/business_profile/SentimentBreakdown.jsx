@@ -1,13 +1,12 @@
-import { PositiveIcon, NeutralIcon, NegativeIcon } from '../icons/SentimentIcons';
+import { PositiveIcon, NegativeIcon } from '../icons/SentimentIcons';
 
-export default function SentimentBreakdown({ positive, neutral, negative }) {
-  const total = positive + neutral + negative;
+export default function SentimentBreakdown({ positive, negative }) {
+  const total = positive + negative;
   const positivePercent = total > 0 ? ((positive / total) * 100).toFixed(0) : 0;
-  const neutralPercent = total > 0 ? ((neutral / total) * 100).toFixed(0) : 0;
   const negativePercent = total > 0 ? ((negative / total) * 100).toFixed(0) : 0;
 
   // Calculate intensity/average (weighted by sentiment)
-  const intensity = total > 0 ? ((positive * 5 + neutral * 3 + negative * 1) / (total * 5)).toFixed(1) : 0;
+  const intensity = total > 0 ? ((positive * 5 + negative * 1) / (total * 5)).toFixed(1) : 0;
 
   return (
     <div className="space-y-6">
@@ -19,12 +18,7 @@ export default function SentimentBreakdown({ positive, neutral, negative }) {
           </div>
           <p className="text-sm font-bold text-emerald-600">{positivePercent}%</p>
         </div>
-        <div className="text-center">
-          <div className="flex items-center justify-center mb-2">
-            <NeutralIcon className="w-8 h-8 text-gray-600" />
-          </div>
-          <p className="text-sm font-bold text-gray-600">{neutralPercent}%</p>
-        </div>
+
         <div className="text-center">
           <div className="flex items-center justify-center mb-2">
             <NegativeIcon className="w-8 h-8 text-rose-600" />
@@ -38,10 +32,6 @@ export default function SentimentBreakdown({ positive, neutral, negative }) {
         <div
           className="bg-emerald-500 transition-all"
           style={{ width: `${total > 0 ? (positive / total) * 100 : 0}%` }}
-        ></div>
-        <div
-          className="bg-gray-400 transition-all"
-          style={{ width: `${total > 0 ? (neutral / total) * 100 : 0}%` }}
         ></div>
         <div
           className="bg-rose-500 transition-all"

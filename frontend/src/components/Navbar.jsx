@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
-import Home from "./icons/Home";
+
 import Services from "./icons/Services";
 import About from "./icons/About";
 import Login from "./icons/Login";
@@ -8,7 +8,7 @@ import Register from "./icons/Register";
 import Logout from "./icons/Logout";
 import UserAvatar from "./UserAvatar";
 import vibecheck_logo from '../assets/vibecheck_logo.png';
-
+import { Home, TrendingUp, Compass, Info, Briefcase } from "lucide-react";
 function Navbar() {
   const location = useLocation();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -62,6 +62,18 @@ function Navbar() {
   const isLoginPage = location.pathname === "/login";
   const isRegisterPage = location.pathname === "/register";
 
+  const isHomePage = location.pathname === "/";
+  const isTrendingSection = isHomePage && location.hash === "#premium-businesses";
+  const isAboutSection = isHomePage && location.hash === "#journey";
+
+  const navLinkClass = (isActive) =>
+    [
+      "relative flex items-center gap-2 font-normal transition group pb-1",
+      isActive ? "text-[#004687]" : "text-gray-600 hover:text-[#004687]",
+      "after:content-[''] after:absolute after:left-0 after:-bottom-0.5 after:h-0.5 after:w-full after:origin-left after:scale-x-0 after:bg-[#004687] after:transition-transform after:duration-200",
+      isActive ? "after:scale-x-100" : "group-hover:after:scale-x-100",
+    ].join(" ");
+
   if (isOwner || isBusinessOwnerRoute) {
     return null;
   }
@@ -79,27 +91,49 @@ function Navbar() {
         {/* MIDDLE: Navigation Links */}
         {!isOwner && (
           <div className="hidden md:flex gap-10 items-center">
-            <Link 
-              to="/" 
-              className="flex items-center gap-2 text-gray-700 font-medium hover:text-[#004687] transition group"
-            >
-              <Home className="w-5 h-5 group-hover:text-[#004687]" />
-              Home
-            </Link>
-            <Link 
-              to="/services" 
-              className="flex items-center gap-2 text-gray-700 font-medium hover:text-[#004687] transition group"
-            >
-              <Services className="w-5 h-5 group-hover:text-[#004687]" />
-              Services
-            </Link>
-            <Link 
-              to="/about" 
-              className="flex items-center gap-2 text-gray-700 font-medium hover:text-[#004687] transition group"
-            >
-              <About className="w-5 h-5 group-hover:text-[#004687]" />
-              About
-            </Link>
+            <div className="hidden md:flex gap-10 items-center">
+  
+  <Link
+    to="/"
+    className={navLinkClass(isHomePage && !location.hash)}
+  >
+    <Home className="w-5 h-5 group-hover:text-[#004687]" />
+    Home
+  </Link>
+
+  <Link
+    to={{ pathname: "/", hash: "#premium-businesses" }}
+    className={navLinkClass(isTrendingSection)}
+  >
+    <TrendingUp className="w-5 h-5 group-hover:text-[#004687]" />
+    Trending
+  </Link>
+
+  <Link
+    to="/businesses"
+    className={navLinkClass(location.pathname === "/businesses")}
+  >
+    <Compass className="w-5 h-5 group-hover:text-[#004687]" />
+    Discover
+  </Link>
+
+  <Link
+    to={{ pathname: "/", hash: "#journey" }}
+    className={navLinkClass(isAboutSection)}
+  >
+    <Info className="w-5 h-5 group-hover:text-[#004687]" />
+    About
+  </Link>
+
+  {/* <Link
+    to="/business"
+    className="flex items-center gap-2 text-gray-600 font-normal hover:text-[#004687] transition group"
+  >
+    <Briefcase className="w-5 h-5 group-hover:text-[#004687]" />
+    For Business
+  </Link> */}
+
+</div>
           </div>
         )}
 

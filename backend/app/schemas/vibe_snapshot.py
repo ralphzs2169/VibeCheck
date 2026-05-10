@@ -9,7 +9,6 @@ class VibeSnapshotBase(BaseModel):
     review_count: int
 
     positive_count: int
-    mixed_count: int
     negative_count: int
 
     summary_text: str
@@ -30,6 +29,5 @@ class VibeSnapshotMiniResponse(BaseModel):
     review_count: int
     summary_text: str
     positive_count: int
-    mixed_count: int
     negative_count: int
     

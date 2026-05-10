@@ -3,7 +3,7 @@ import SentimentBreakdown from './SentimentBreakdown';
 import { BASE_URL } from '../../services/api';
 import ImagePlaceholder from '../icons/ImagePlaceholder';
 
-function ProfileSidebar({ business, latestVibe, getVibeLabel }) {
+function ProfileSidebar({ business, latestVibe, getVibeLevelFromScore }) {
   const vibeScore = latestVibe?.vibe_score || 0;
 
   return (
@@ -77,10 +77,9 @@ function ProfileSidebar({ business, latestVibe, getVibeLabel }) {
 
             <VibeScoreGauge
               score={vibeScore}
-              label={getVibeLabel(vibeScore)}
+              label={getVibeLevelFromScore(vibeScore, latestVibe?.review_count || 0)}
               reviewCount={latestVibe?.review_count || 0}
               positive={latestVibe?.positive_count || 0}
-              neutral={latestVibe?.mixed_count || 0}
               negative={latestVibe?.negative_count || 0}
             />
           </div>
@@ -93,7 +92,6 @@ function ProfileSidebar({ business, latestVibe, getVibeLabel }) {
 
             <SentimentBreakdown
               positive={latestVibe?.positive_count || 0}
-              neutral={latestVibe?.mixed_count || 0}
               negative={latestVibe?.negative_count || 0}
             />
           </div>

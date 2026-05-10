@@ -2,7 +2,6 @@
 import logging
 import os
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -13,7 +12,7 @@ from sentence_transformers import SentenceTransformer
 from transformers import pipeline
 
 from backend.app.core.aspects import ASPECTS
-from backend.app.core.constants import HOURS_BETWEEN_SNAPSHOTS
+from backend.app.core.constants import HOURS_BETWEEN_SNAPSHOTS, UPLOADS_DIR
 from backend.app.core.database import Base, engine
 from backend.app.core.ml_registry import MLRegistry
 from backend.app.core.scheduler import run_vibe_snapshot_job, scheduler
@@ -28,12 +27,8 @@ from backend.app.routers import (
     dashboard
 )
 
-# BASE_DIR is the parent directory of the current file's parent directory (i.e., the root of the project)
-BASE_DIR = Path(__file__).resolve().parent.parent 
-
 # Ensure uploads directory exists
-uploads_path = BASE_DIR / "uploads"
-uploads_path.mkdir(exist_ok=True)
+UPLOADS_DIR.mkdir(exist_ok=True)
 
 # Configure logging 
 logging.basicConfig(
@@ -132,8 +127,5 @@ app.include_router(businesses.router, prefix="/api/businesses", tags=["businesse
 app.include_router(analytics.router, prefix="/api/business/analytics", tags=["analytics"])
 app.include_router(vibe_snapshots.router, prefix="/api/vibe-snapshots", tags=["vibe_snapshots"])
 
-app.mount("/uploads", StaticFiles(directory=str(uploads_path)), name="uploads")
+app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
-@app.get("/")
-async def root():
-    return {"message": "Welcome to Mobile Legends!"}

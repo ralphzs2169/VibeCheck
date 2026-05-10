@@ -59,13 +59,12 @@ function ResortsDiscovery() {
         list.forEach((business) => {
           if (business.latest_vibe) {
             const vibe = business.latest_vibe;
-            const total = vibe.positive_count + vibe.mixed_count + vibe.negative_count;
+            const total = vibe.positive_count + vibe.negative_count;
             vibeMap[business.id] = {
               overall_score: vibe.vibe_score,
               sentiment_distribution: {
-                positive: total > 0 ? vibe.positive_count / total : 0.33,
-                neutral: total > 0 ? vibe.mixed_count / total : 0.33,
-                negative: total > 0 ? vibe.negative_count / total : 0.34,
+                positive: total > 0 ? vibe.positive_count / total : 0.5,
+                negative: total > 0 ? vibe.negative_count / total : 0.5,
               },
               summary: vibe.summary_text || "Guest experiences analyzed",
             };
@@ -73,9 +72,8 @@ function ResortsDiscovery() {
             vibeMap[business.id] = {
               overall_score: 0.5,
               sentiment_distribution: {
-                positive: 0.33,
-                neutral: 0.33,
-                negative: 0.34,
+                positive: 0.5,
+                negative: 0.5,
               },
               summary: "Analyzing guest experiences...",
             };

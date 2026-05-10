@@ -1,3 +1,6 @@
+# This module contains functions to analyze review data for a business and detect significant shifts in customer experience.
+# It combines both sentiment and volume signals to identify potential events impacting customer experience,
+
 import numpy as np
 import pandas as pd
 from sqlalchemy import func, select
@@ -44,7 +47,6 @@ def stable_z(series):
     return (series - np.mean(series)) / std
 
 
-
 async def get_review_activity(db: AsyncSession, business_id: int):
     """
     Detects significant shifts in customer experience by analyzing daily sentiment and review volume.
@@ -57,6 +59,9 @@ async def get_review_activity(db: AsyncSession, business_id: int):
     - emerging_event (potential issue based on trends),
     - no_anomaly (no significant changes detected) along with confidence level and interpretation.
     """
+
+    # Fetch daily aggregated sentiment and volume data for the business, 
+    # grouped by date and weekday to allow for seasonality adjustments
     stmt = (
         select(
             func.date(Review.created_at).label("date"),
@@ -183,18 +188,3 @@ async def get_review_activity(db: AsyncSession, business_id: int):
         "urgency": map_urgency(event_type, confidence)
     }
 
-
-
-# Top Negative Themes This Month
-
-# long waiting time
-# rude cashier
-# wrong orders
-
-# Top Positive Themes
-
-# cozy ambiance
-# delicious desserts
-# helpful staff
-
-# This is stronger than plain aspect frequency because it captures more natural customer language.

@@ -1,5 +1,5 @@
 import getVibeLevelFromScore from "../../utils/vibeLabel";
-export default function VibeScoreGauge({ score, label, reviewCount, positive = 0, neutral = 0, negative = 0 }) {
+export default function VibeScoreGauge({ score, label, reviewCount, positive = 0, negative = 0 }) {
   // Score is 0-5 scale from API
   const percentage = (score / 5) * 100;
   const circumference = 2 * Math.PI * 50;
@@ -50,10 +50,6 @@ export default function VibeScoreGauge({ score, label, reviewCount, positive = 0
         <div className="text-center">
           <p className="text-lg font-bold text-emerald-600">{positive}</p>
           <p className="text-xs text-gray-600">Positive</p>
-        </div>
-        <div className="text-center">
-          <p className="text-lg font-bold text-gray-600">{neutral}</p>
-          <p className="text-xs text-gray-600">Neutral</p>
         </div>
         <div className="text-center">
           <p className="text-lg font-bold text-rose-600">{negative}</p>
