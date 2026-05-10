@@ -12,17 +12,58 @@ from backend.app.models.review import Review
 
 from backend.app.services.analytics.helpers import reliability
 
-async def get_business_aspect_summary(
-        db: AsyncSession,
-        business_id: int
-    ):
+async def get_aspect_summary(db: AsyncSession, business_id: int):
     """
-    Provides aspect-level sentiment analysis summary for a business, including average sentiment score,
-    review count, and a label (positive/negative/neutral) for each aspect. Also includes trend data to show
-    sentiment trends over time.
-    """
+    Computes average sentiment score, mention count, and overall label for each aspect for a business.
 
-    # Aggregate aspect sentiment scores and counts grouped by aspect and month
+    """
+    stmt = (
+        select(
+            AspectSentiment.aspect,
+            func.avg(AspectSentiment.sentiment_score).label("avg_score"),
+            func.count(AspectSentiment.id).label("count"),
+        )
+        .join(Review, AspectSentiment.review_id == Review.id)
+        .where(Review.business_id == business_id)
+        .group_by(AspectSentiment.aspect)
+    )
+
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    if not rows:
+        return {
+            "summary": {},
+            "meta": reliability(0, MIN_ASPECT_COUNT)
+        }
+
+    summary = {}
+    total_mentions = 0
+
+    for row in rows:
+        avg = float(row.avg_score)
+        count = int(row.count)
+        total_mentions += count
+
+        label = (
+            "positive" if avg > ABSA_POSITIVE_THRESHOLD
+            else "negative" if avg < ABSA_NEGATIVE_THRESHOLD
+            else "neutral"
+        )
+
+        summary[row.aspect] = {
+            "avg_score": avg,
+            "count": count,
+            "label": label
+        }
+
+    return {
+        "summary": summary,
+        "meta": reliability(total_mentions, MIN_ASPECT_COUNT)
+    }
+
+
+async def get_aspect_trends(db: AsyncSession, business_id: int):
     stmt = (
         select(
             AspectSentiment.aspect,
@@ -44,106 +85,63 @@ async def get_business_aspect_summary(
 
     if not rows:
         return {
-            "summary": {},
             "trends": {},
             "meta": reliability(0, MIN_ASPECT_COUNT)
         }
 
-    summary = {}
-    trends = {}
+    grouped = {}
+    total_mentions = 0
 
-    total_aspects = 0
-
-    # Calculate weighted average sentiment score for each aspect and prepare trend data
     for row in rows:
         aspect = row.aspect
-        avg = float(row.avg_score)
-        count = int(row.count)
-        period = row.period
+        total_mentions += int(row.count)
 
-        total_aspects += count
-
-        #  
-        if aspect not in summary:
-            summary[aspect] = {
-                "total_score": 0.0,
-                "total_count": 0
-            }
-
-        summary[aspect]["total_score"] += avg * count
-        summary[aspect]["total_count"] += count
-
-        # Prepare data for trend analysis
-        if aspect not in trends:
-            trends[aspect] = []
-
-        trends[aspect].append({
-            "period": period,
-            "avg_score": avg,
-            "count": count
+        grouped.setdefault(aspect, []).append({
+            "period": row.period,
+            "avg_score": float(row.avg_score),
+            "count": int(row.count)
         })
 
-    # -----------------------------
-    # finalize summary + compute trends
-    # -----------------------------
-    final_summary = {}
-    final_trends = {}
-
-    for aspect, data in summary.items():
-        avg = data["total_score"] / data["total_count"]
-
-        # -------------------------
-        # SUMMARY LABEL
-        # -------------------------
-        label = (
-            "positive" if avg > ABSA_POSITIVE_THRESHOLD
-            else "negative" if avg < ABSA_NEGATIVE_THRESHOLD
-            else "neutral"
-        )
-
-        final_summary[aspect] = {
-            "avg_score": avg,
-            "count": data["total_count"],
-            "label": label
-        }
-
-    # -----------------------------
-    # TREND CLASSIFICATION
-    # -----------------------------
     def compute_trend(points):
         if len(points) < 2:
-            return "stable"
+            return {
+                "trend": "stable",
+                "change": 0
+            }
 
         points = sorted(points, key=lambda x: x["period"])
 
         first = points[0]["avg_score"]
         last = points[-1]["avg_score"]
-
-        delta = last - first
+        delta = round(last - first, 2)
 
         if delta > 0.05:
-            return "improving"
+            trend = "improving"
         elif delta < -0.05:
-            return "declining"
-        return "stable"
+            trend = "declining"
+        else:
+            trend = "stable"
 
-    for aspect, points in trends.items():
-        final_trends[aspect] = {
-            "data": points,
-            "trend": compute_trend(points)
+        return {
+            "trend": trend,
+            "change": delta
         }
 
-    # -----------------------------
-    # return
-    # -----------------------------
+    trends = {}
+
+    for aspect, points in grouped.items():
+        trends[aspect] = {
+            "data": points,
+            **compute_trend(points)
+        }
+
     return {
-        "summary": final_summary,
-        "trends": final_trends,
-        "meta": reliability(total_aspects, MIN_ASPECT_COUNT)
+        "trends": trends,
+        "meta": reliability(total_mentions, MIN_ASPECT_COUNT)
     }
 
 
-async def get_frequent_aspect_mining(
+async def get_aspect_frequency(
         db: AsyncSession,
         business_id: int,
         aspects: dict,

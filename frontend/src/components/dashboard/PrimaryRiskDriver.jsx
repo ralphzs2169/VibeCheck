@@ -58,7 +58,7 @@ function PrimaryRiskDriver({ data = {} }) {
                         Primary Risk Driver
                     </h2>
                     <p className="text-xs text-gray-400 mt-0.5">
-                        Most critical issue affecting business perception
+                       Aspect contributing most to negative guest experience signals
                     </p>
                 </div>
                 <span className={`text-xs font-semibold px-2 py-1 rounded-full ${badgeClass}`}>
@@ -87,7 +87,7 @@ function PrimaryRiskDriver({ data = {} }) {
                 </div>
             </div>
 
-            {/* Data maturity indicator (shows confidence factor visually) */}
+            {/* Data maturity indicator (shows confidence factor visually)
             <div className={`mb-4 p-3 rounded-lg border ${reliabilityBg} border-current`}>
                 <div className="flex items-center justify-between mb-2">
                     <p className="text-xs font-medium text-gray-700">Data Maturity</p>
@@ -101,7 +101,7 @@ function PrimaryRiskDriver({ data = {} }) {
                         style={{ width: `${dataMaturity}%` }}
                     />
                 </div>
-            </div>
+            </div> */}
 
             {/* Reliability status with context */}
             <div className={`pt-4 border-t ${isReliable ? 'border-gray-100' : 'border-amber-100'}`}>

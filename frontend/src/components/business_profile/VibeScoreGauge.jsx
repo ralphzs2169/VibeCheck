@@ -1,4 +1,5 @@
-export default function VibeScoreGauge({ score, label, positive = 0, neutral = 0, negative = 0 }) {
+import getVibeLevelFromScore from "../../utils/vibeLabel";
+export default function VibeScoreGauge({ score, label, reviewCount, positive = 0, neutral = 0, negative = 0 }) {
   // Score is 0-5 scale from API
   const percentage = (score / 5) * 100;
   const circumference = 2 * Math.PI * 50;
@@ -13,15 +14,6 @@ export default function VibeScoreGauge({ score, label, positive = 0, neutral = 0
     return '#ef4444'; // red
   };
 
-  const getLabel = () => {
-    if (score >= 4.5) return 'Exceptional';
-    if (score >= 4) return 'Excellent';
-    if (score >= 3.5) return 'Great';
-    if (score >= 3) return 'Good';
-    if (score >= 2.5) return 'Fair';
-    if (score >= 2) return 'Okay';
-    return 'Needs Work';
-  };
 
   return (
     <div className="flex flex-col items-center justify-center">
@@ -51,10 +43,10 @@ export default function VibeScoreGauge({ score, label, positive = 0, neutral = 0
         </div>
       </div>
 
-      <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">{label || getLabel()}</h3>
+      <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">{getVibeLevelFromScore(score, reviewCount).label}</h3>
 
       {/* Sentiment counts */}
-      {/* <div className="flex gap-4 justify-center w-full">
+      <div className="flex gap-4 justify-center w-full">
         <div className="text-center">
           <p className="text-lg font-bold text-emerald-600">{positive}</p>
           <p className="text-xs text-gray-600">Positive</p>
@@ -67,7 +59,7 @@ export default function VibeScoreGauge({ score, label, positive = 0, neutral = 0
           <p className="text-lg font-bold text-rose-600">{negative}</p>
           <p className="text-xs text-gray-600">Negative</p>
         </div>
-      </div> */}
+      </div>
     </div>
   );
 }

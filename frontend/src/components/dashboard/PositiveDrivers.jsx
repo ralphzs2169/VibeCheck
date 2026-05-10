@@ -82,7 +82,7 @@ function PositiveDrivers({ data = {} }) {
                         style={{ width: `${Math.min(data.score, 100)}%` }}
                     />
 
-                            {/* Data maturity indicator */}
+                            {/* Data maturity indicator
                             <div className={`mb-5 p-3 rounded-lg border ${reliabilityBg} border-current`}>
                                 <div className="flex items-center justify-between mb-2">
                                     <p className="text-xs font-medium text-gray-700">Data Maturity</p>
@@ -96,7 +96,7 @@ function PositiveDrivers({ data = {} }) {
                                         style={{ width: `${dataMaturity}%` }}
                                     />
                                 </div>
-                            </div>
+                            </div> */}
                 </div>
             </div>
 

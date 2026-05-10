@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { Zap } from "lucide-react";
 import {
     ResponsiveContainer,
     AreaChart,
@@ -147,10 +148,7 @@ export default function VibeForecastChart({ data = {} }) {
     const isInsufficient =
         data?.meta?.is_reliable === false || historyCount < 6;
 
-    const dataset = useMemo(
-        () => mergeHistoryAndForecast(data),
-        [data]
-    );
+    const dataset = useMemo(() => mergeHistoryAndForecast(data), [data]);
 
     const futureMonths = data.forecast_months || 6;
 
@@ -160,22 +158,71 @@ export default function VibeForecastChart({ data = {} }) {
     const vibe = data.predicted_vibe || "mixed";
     const vibeMeta = VIBE_LABEL_META[vibe] || VIBE_LABEL_META.mixed;
 
+    const lastHistory = data?.history?.at(-1)?.avg_score ?? null;
+    const forecastScore = data?.forecast_score ?? null;
+
+    const diff =
+        lastHistory != null && forecastScore != null
+            ? forecastScore - lastHistory
+            : null;
+
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
 
             {/* HEADER */}
             <div className="flex justify-between items-start mb-5">
                 <div>
-                    <h2 className="text-lg font-semibold text-gray-900">
-                        Vibe Score Forecast
-                    </h2>
+                    <div className="flex items-center gap-2 mb-1">
+                        <Zap className="w-5 h-5 text-gray-700" />
+                        <h2 className="text-lg font-semibold text-gray-900">
+                            Vibe Score Forecast
+                        </h2>
+                    </div>
+
                     <p className="text-xs text-gray-400 mt-1">
                         Next {futureMonths} months projection
                     </p>
+
+                    {!isInsufficient && (
+                        <div className="flex gap-4 mt-3">
+                            <div>
+                                <p className="text-xs text-gray-400">Forecast Score</p>
+                                <p className="text-lg font-bold text-[#0ea5e9]">
+                                    {forecastScore?.toFixed(1) ?? "--"}
+                                </p>
+                            </div>
+
+                            <div>
+                                <p className="text-xs text-gray-400">Current Score</p>
+                                <p className="text-lg font-bold text-[#004687]">
+                                    {lastHistory?.toFixed(1) ?? "--"}
+                                </p>
+                            </div>
+
+                            <div>
+                                <p className="text-xs text-gray-400">Expected Change</p>
+                                <p
+                                    className={`text-lg font-bold ${
+                                        diff == null
+                                            ? "text-gray-400"
+                                            : diff >= 0
+                                            ? "text-green-600"
+                                            : "text-red-500"
+                                    }`}
+                                >
+                                    {diff == null
+                                        ? "--"
+                                        : `${diff >= 0 ? "+" : ""}${diff.toFixed(2)}`}
+                                </p>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {!isInsufficient && (
-                    <div className={`text-xs font-semibold px-3 py-1 rounded-full ${vibeMeta.badge}`}>
+                    <div
+                        className={`text-xs font-semibold px-3 py-1 rounded-full ${vibeMeta.badge}`}
+                    >
                         {vibeMeta.label}
                     </div>
                 )}
@@ -183,7 +230,6 @@ export default function VibeForecastChart({ data = {} }) {
 
             {/* BODY */}
             <div className="h-[280px]">
-
                 {isInsufficient ? (
                     <div className="h-full flex flex-col items-center justify-center text-center gap-3">
                         <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-300">
@@ -202,7 +248,6 @@ export default function VibeForecastChart({ data = {} }) {
                             to generate predictions.
                         </p>
                     </div>
-
                 ) : (
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={dataset}>

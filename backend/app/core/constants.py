@@ -101,18 +101,18 @@ BUSINESS_HEALTH_CONFIG = {
     "weights": {
         "vibe": 0.4,
         "trend": 0.25,
-        "consistency": 0.2,
+        "alignment": 0.2,
         "confidence": 0.15
     },
 
     "cold_start_weights": {
         "vibe": 0.7,
-        "consistency": 0.3
+        "alignment": 0.3
     },
 
     "aspects": {
         "min_aspects": 2,
-        "default_consistency": 0.5,
+        "default_alignment": 0.5,
         "stability_sensitivity": 2.0
     },
 

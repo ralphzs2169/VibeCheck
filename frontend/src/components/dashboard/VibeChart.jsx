@@ -5,9 +5,11 @@ import {
     YAxis,
     Tooltip,
     ResponsiveContainer,
+    ReferenceDot,
     CartesianGrid,
 } from "recharts";
 import { useState } from "react";
+import { TrendingUp } from "lucide-react";
 import { GraphIcon } from "../icons/AnalyticsIcons";
 import ReviewProgressState from "./ReviewProgressState";
 
@@ -17,10 +19,22 @@ const RANGES = ["7D", "30D", "90D"];
 const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
         const value = payload[0].value;
+        const pointKind = payload[0]?.payload?.point_kind;
+        const pointLabel =
+            pointKind === "peak"
+                ? "Peak point"
+                : pointKind === "drop"
+                ? "Drop point"
+                : null;
 
         return (
             <div className="bg-white border border-gray-100 shadow-lg rounded-xl px-3 py-2 text-sm">
                 <p className="text-gray-500">{label}</p>
+                {pointLabel && (
+                    <p className="text-xs font-medium mt-0.5 text-[#004687]">
+                        {pointLabel}
+                    </p>
+                )}
                 <p className="font-semibold text-[#004687]">
                     Vibe Score: {Number(value).toFixed(2)} / 5
                 </p>
@@ -65,16 +79,43 @@ function EmptyState({ type, minRequired, sampleSize }) {
 }
 
 // Main component
-function VibeChart({ data = {}, vibeOverTime = {} }) {
+function VibeChart({ data = {}, vibeOverTime = {}, peakAndDrop = {}, embedded = false, headerRight = null }) {
     const [range, setRange] = useState("7D");
 
     const rawData = Array.isArray(data?.[range]) ? data[range] : [];
+
+    const highlightMap = new Map();
+
+    const peak = peakAndDrop?.peak;
+    const drop = peakAndDrop?.drop;
+
+    if (peak?.date != null) {
+        highlightMap.set(String(peak.date), {
+            kind: "peak",
+            label: peak.title || "Peak point",
+            score: peak.current_score ?? peak.value,
+        });
+    }
+
+    if (drop?.date != null) {
+        highlightMap.set(String(drop.date), {
+            kind: "drop",
+            label: drop.title || "Drop point",
+            score: drop.current_score ?? drop.value,
+        });
+    }
 
     const chartData = rawData
         .filter((item) => item?.avg_score != null && item?.period)
         .map((item) => ({
             period: item.period,
             vibe_score: Number(item.avg_score),
+            ...(highlightMap.has(String(item.period))
+                ? {
+                      point_kind: highlightMap.get(String(item.period)).kind,
+                      point_label: highlightMap.get(String(item.period)).label,
+                  }
+                : {}),
         }));
 
     const sampleSize = vibeOverTime?.meta?.sample_size ?? rawData.length;
@@ -86,20 +127,21 @@ function VibeChart({ data = {}, vibeOverTime = {} }) {
         vibeOverTime?.meta?.is_reliable === false ||
         sampleSize < minRequired;
 
-    return (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 h-[530px]">
+    const content = (
+        <>
             {/* Header with range selector */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-4">
                 <div>
-                    <h2 className="text-lg font-semibold text-gray-900">
-                        Vibe Over Time
-                    </h2>
+                    <div className="flex items-center gap-2">
+                        <TrendingUp className="w-5 h-5 text-gray-700" />
+                        <h2 className="text-lg font-semibold text-gray-900">
+                           Vibe Performance Trend
+                        </h2>
+                    </div>
 
-         
-                        <p className="text-xs text-gray-400 mt-0.5">
-                            Business Vibe Score Over Time
-                        </p>
-  
+                    <p className="text-xs text-gray-400 mt-0.5">
+                       Monitor changes in customer sentiment and overall experience over time
+                    </p>
                 </div>
 
                 {/* Range Selector */}
@@ -119,6 +161,13 @@ function VibeChart({ data = {}, vibeOverTime = {} }) {
                     ))}
                 </div>
             </div>
+
+            {/* Optional right-aligned header slot (e.g. Peak/Drop card) */}
+            {headerRight && (
+                <div className="mb-4">
+                    {headerRight}
+                </div>
+            )}
 
             {/* Chart Content */}
             {isEmpty ? (
@@ -188,17 +237,48 @@ function VibeChart({ data = {}, vibeOverTime = {} }) {
                                 strokeWidth={2.5}
                                 fill="url(#vibeGradient)"
                                 dot={false}
-                                activeDot={{
-                                    r: 5,
-                                    fill: "#004687",
-                                    stroke: "#fff",
-                                    strokeWidth: 2,
-                                }}
+                                isAnimationActive={true}
+                                animationDuration={400}
                             />
+
+                            {/* Render reference dots only for peak/drop to avoid per-point custom dot rendering */}
+                            {peak && (
+                                <ReferenceDot
+                                    x={peak.date}
+                                    y={peak.current_score ?? peak.value}
+                                    r={5}
+                                    fill="#16a34a"
+                                    stroke="#ffffff"
+                                    strokeWidth={2}
+                                    isFront
+                                />
+                            )}
+
+                            {drop && (
+                                <ReferenceDot
+                                    x={drop.date}
+                                    y={drop.current_score ?? drop.value}
+                                    r={5}
+                                    fill="#dc2626"
+                                    stroke="#ffffff"
+                                    strokeWidth={2}
+                                    isFront
+                                />
+                            )}
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>
             )}
+        </>
+    );
+
+    if (embedded) {
+        return content;
+    }
+
+    return (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 h-[530px]">
+            {content}
         </div>
     );
 }

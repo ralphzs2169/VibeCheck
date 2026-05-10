@@ -12,6 +12,7 @@ import BusinessReviews from "./pages/business_owner/BusinessReviews.jsx";
 import RoleProtectedRoute from "./components/security/RoleProtectedRoute.jsx";
 import GuestRoute from "./components/security/GuestRoute.jsx";
 import BusinessAnalytics from "./pages/business_owner/BusinessAnalytics.jsx";
+import ResortsDiscovery from "./pages/ResortsDiscovery";
 
 
 function App() {
@@ -60,6 +61,15 @@ function App() {
               <BusinessProfile />
             </RoleProtectedRoute>
           } />
+
+        <Route
+          path="/businesses"
+          element={
+            <RoleProtectedRoute notAllowedRoles={["owner"]} requireAuth={false}>
+              <ResortsDiscovery />
+            </RoleProtectedRoute>
+          }
+        />
 
         <Route path="/business" element={<RoleProtectedRoute allowedRoles={["owner"]}><BusinessLayout /></RoleProtectedRoute>}>
           <Route path="dashboard" element={<BusinessDashboard />} />

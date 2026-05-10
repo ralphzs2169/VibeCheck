@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { getDashboard } from "../../services/api";
 import OwnerSidebar from "./OwnerSidebar";
+import OwnerHeader from "./OwnerHeader";
 
 function BusinessLayout() {
   const [business, setBusiness] = useState(null);
@@ -36,12 +37,19 @@ function BusinessLayout() {
   if (error) return <div>Error: {error}</div>;
 
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-gray-50 relative overflow-hidden">
-      <div className="relative z-10 h-[calc(100vh-64px)] flex">
-        <OwnerSidebar business={business} />
-        <div className="flex-1 overflow-y-auto p-6">
+    <div className="min-h-screen bg-gray-50">
+      {/* FIXED SIDEBAR */}
+      <OwnerSidebar business={business} />
+
+      {/* MAIN CONTENT AREA */}
+      <div className="ml-64 min-h-screen">
+        {/* HEADER */}
+        <OwnerHeader business={business} />
+
+        {/* PAGE CONTENT */}
+        <main className="pt-20 min-h-screen overflow-y-auto">
           <Outlet />
-        </div>
+        </main>
       </div>
     </div>
   );

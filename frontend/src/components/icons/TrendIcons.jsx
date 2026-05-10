@@ -56,26 +56,26 @@ export function DecliningIcon({ className = "w-5 h-5" }) {
     </svg>
   );
 }
-
-// Stable / Flat trend icon
 export function StableIcon({ className = "w-5 h-5" }) {
   return (
     <svg
-      viewBox="0 0 48 48"
+      viewBox="0 0 24 24"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
       stroke="currentColor"
     >
-      {/* flat line */}
-      <line
-        x1="10"
-        y1="24"
-        x2="38"
-        y2="24"
-        strokeWidth="4"
+      {/* flat line (no direction = stable state) */}
+      <path
+        d="M6 12H18"
+        strokeWidth="2"
         strokeLinecap="round"
+        strokeLinejoin="round"
       />
+
+      {/* subtle balance dots */}
+      <circle cx="6" cy="12" r="1.5" fill="currentColor" />
+      <circle cx="18" cy="12" r="1.5" fill="currentColor" />
     </svg>
   );
 }

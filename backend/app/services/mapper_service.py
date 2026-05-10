@@ -56,9 +56,9 @@ def map_stability(volatility: float, metric: str, data_points: int):
 
     elif metric == "vibe_volatility":
         messages = {
-            "stable": "Overall business experience is consistent over time.",
-            "mixed": "Business experience shows moderate fluctuations.",
-            "unstable": "Business experience is highly inconsistent."
+            "stable": "Vibe is steady over time.",
+            "mixed": "Vibe is showing moderate fluctuations.",
+            "unstable": "Vibe is fluctuating over time."
         }
 
     else:
@@ -71,4 +71,63 @@ def map_stability(volatility: float, metric: str, data_points: int):
     return {
         "label": level,
         "message": messages[level]
+    }
+
+
+def map_vibe_time_series(rows):
+    return [
+        {
+            "date": r["period"],
+            "value": round(r["avg_score"], 2)
+        }
+        for r in rows
+    ]
+
+def map_peak_drop_event(event, event_type: str):
+    if not event:
+        return None
+
+    magnitude = abs(event.get("change", 0))
+
+    if magnitude >= 0.6:
+        impact = "High"
+    elif magnitude >= 0.3:
+        impact = "Medium"
+    else:
+        impact = "Low"
+
+    if event_type == "peak":
+        title = "Best Improvement Day"
+
+        if impact == "High":
+            summary = "Customer experience improved sharply compared to the previous day."
+            action = "Review what drove this improvement and reinforce it."
+        elif impact == "Medium":
+            summary = "Noticeable improvement in customer experience was detected."
+            action = "Identify what likely contributed to the positive shift."
+        else:
+            summary = "Small improvement in customer experience observed."
+            action = "Monitor if this trend continues."
+    else:
+        title = "Biggest Decline Day"
+
+        if impact == "High":
+            summary = "Customer experience dropped sharply compared to the previous day."
+            action = "Investigate potential issues immediately."
+        elif impact == "Medium":
+            summary = "Noticeable decline in customer experience was detected."
+            action = "Review recent feedback for recurring complaints."
+        else:
+            summary = "Small decline in customer experience observed."
+            action = "Keep monitoring for patterns."
+
+    return {
+        "title": title,
+        "date": event.get("date"),
+        "summary": summary,
+        "impact": impact,
+        "action": action,
+        "change": round(event.get("change", 0), 2),
+        "previous_score": round(event.get("previous_score", 0), 2),
+        "current_score": round(event.get("current_score", 0), 2),
     }

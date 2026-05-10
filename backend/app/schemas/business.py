@@ -1,4 +1,5 @@
 from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.app.schemas.review import ReviewResponse
@@ -13,7 +14,8 @@ class BusinessBase(BaseModel):
 class BusinessCreate(BusinessBase):
     pass
 
-class BusinessUpdate(BusinessBase):
+
+class BusinessUpdate(BaseModel):
     name: str | None = Field(None, max_length=100)
     location: str | None = Field(None, max_length=100)
     short_description: str | None = Field(None, max_length=255)
@@ -23,8 +25,6 @@ class BusinessResponse(BusinessBase):
     id: int
     created_at: datetime
     updated_at: datetime
-
-    image_path: str | None = None  
 
     latest_vibe: VibeSnapshotMiniResponse | None = None
     reviews: list[ReviewResponse]

@@ -16,6 +16,7 @@ from backend.app.services.vibe_snapshot_service import (
     get_vibe_snapshots_for_business,
     get_latest_vibe_snapshot
 )
+from backend.app.services import business_service
 
 
 async def create_business(
@@ -114,7 +115,7 @@ async def get_business_homepage_feed(db: AsyncSession):
     response_data = []
 
     for business, vibe in rows:
-
+        review_count = await business_service.get_business_review_count(db, business.id)
         response_data.append({
             "id": business.id,
             "name": business.name,
@@ -123,6 +124,7 @@ async def get_business_homepage_feed(db: AsyncSession):
             "image_path": business.image_path,
             "created_at": business.created_at,
             "updated_at": business.updated_at,
+            "review_count": review_count,
             "latest_vibe": (
                 {
                     "vibe_score": vibe.vibe_score,

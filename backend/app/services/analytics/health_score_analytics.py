@@ -28,20 +28,20 @@ async def compute_business_health(
     vibe_norm = health_score_service.normalize_vibe_score(vibe_score)
     trend_norm = health_score_service.normalize_trend(trend, config)
 
-    # aspect consistency (measures how consistent the aspect sentiment scores are,
-    #  which can indicate reliability of overall vibe)
+    # aspect alignment (measures how aligned the aspect sentiment scores are,
+    # which can indicate reliability of overall vibe)
     aspect_values  = [
         a["avg_score"]
         for a in aspects.values()
         if isinstance(a, dict) and "avg_score" in a
     ]
 
-    aspect_result = health_score_service.compute_aspect_stability(
+    aspect_result = health_score_service.compute_aspect_alignment(
         aspect_values,
         config
     )
 
-    consistency = aspect_result["consistency"]
+    alignment = aspect_result["alignment"]
 
     # confidence (measures how much we can trust the vibe score based on volume and sentiment strength of reviews)
     confidence = health_score_service.compute_confidence(
@@ -57,7 +57,7 @@ async def compute_business_health(
     score = health_score_service.compute_final_score(
         vibe=vibe_norm,
         trend=trend_norm,
-        consistency=consistency,
+        alignment=alignment,
         confidence=confidence,
         is_cold_start=is_cold_start,
         data_quality=data_quality,
@@ -66,7 +66,7 @@ async def compute_business_health(
 
     # map final score to health label for UI presentation (e.g. "Healthy", "At Risk", "Unhealthy")
     health_label = health_score_service.map_business_health_label(score)
-    consistency_label = health_score_service.map_consistency(consistency, review_count)
+    alignment_label = health_score_service.map_alignment(alignment, review_count)
     confidence_label = health_score_service.map_confidence(confidence, review_count)
 
     # return detailed health response with all signals and labels for transparency and debugging
@@ -79,9 +79,9 @@ async def compute_business_health(
         is_cold_start=is_cold_start,
         vibe_norm=vibe_norm,
         trend_norm=trend_norm,
-        consistency=consistency,
+        alignment=alignment,
         confidence=confidence,
         health_label=health_label,
-        consistency_label=consistency_label,
+        alignment_label=alignment_label,
         confidence_label=confidence_label
     )

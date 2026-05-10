@@ -14,6 +14,24 @@ from backend.app.models.review import Review
 from backend.app.services.analytics.helpers import reliability
 
 
+def map_urgency(event_type: str, confidence: float):
+    """
+    Maps detected event types and confidence levels to an urgency category 
+    for business action prioritization.
+    """
+    if event_type == "no_anomaly":
+        return "low"
+    if event_type == "emerging_event":
+        return "low_medium"
+    if event_type == "activity_event":
+        return "medium"
+    if event_type == "sentiment_event":
+        return "medium_high"
+    if event_type == "true_event":
+        return "high"
+    return "unknown"
+
+
 def stable_z(series):
     """ 
     Z-score calculation with stability adjustments to prevent extreme values when variance is low.
@@ -27,7 +45,7 @@ def stable_z(series):
 
 
 
-async def get_review_event_detection(db: AsyncSession, business_id: int):
+async def get_review_activity(db: AsyncSession, business_id: int):
     """
     Detects significant shifts in customer experience by analyzing daily sentiment and review volume.
     Combines both sentiment and volume signals to identify potential events impacting customer experience.
@@ -161,5 +179,22 @@ async def get_review_event_detection(db: AsyncSession, business_id: int):
             "note": "Compared against normal weekly behavior and recent trends"
         },
         "interpretation": interpretation,
-        "meta": reliability(len(rows), MIN_SPIKE_DATA_POINTS)
+        "meta": reliability(len(rows), MIN_SPIKE_DATA_POINTS),
+        "urgency": map_urgency(event_type, confidence)
     }
+
+
+
+# Top Negative Themes This Month
+
+# long waiting time
+# rude cashier
+# wrong orders
+
+# Top Positive Themes
+
+# cozy ambiance
+# delicious desserts
+# helpful staff
+
+# This is stronger than plain aspect frequency because it captures more natural customer language.

@@ -1,121 +1,117 @@
 import React from "react";
 import { TrendingUp, TrendingDown, CalendarDays } from "lucide-react";
 
-function formatSentiment(val) {
-    if (typeof val !== "number") return "—";
-    return `${val >= 0 ? "+" : ""}${val.toFixed(2)}`;
+function mapShift(event, type) {
+    if (!event) return null;
+
+    const magnitude = Math.abs(event.change ?? 0);
+
+    let impact = "Low";
+    if (magnitude >= 0.6) impact = "High";
+    else if (magnitude >= 0.3) impact = "Medium";
+
+    return {
+        type,
+        date: event.date,
+        change: Number(event.change ?? 0),
+        impact,
+        previous: event.previous_score,
+        current: event.current_score,
+        interpretation: event.interpretation || null,
+    };
 }
 
-export default function PeakDropAnalysisCard({ data = null, loading = false }) {
-    if (loading) {
-        return (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 animate-pulse">
-                <div className="h-6 bg-gray-200 rounded w-1/3 mb-3" />
-                <div className="h-4 bg-gray-200 rounded w-2/3 mb-6" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div className="h-36 bg-gray-200 rounded" />
-                    <div className="h-36 bg-gray-200 rounded" />
-                </div>
-                <div className="h-8 bg-gray-200 rounded w-1/4" />
-            </div>
-        );
-    }
+function ShiftCard({ item, type }) {
+    const isPositive = type === "positive";
+    const Icon = isPositive ? TrendingUp : TrendingDown;
 
-    const payload = data || {};
-    const peak = payload.peak || null;
-    const drop = payload.drop || null;
-    const meta = payload.meta || {};
+    const containerClass = isPositive
+        ? "bg-emerald-50 border border-emerald-100"
+        : "bg-red-50 border border-red-100";
 
-    // empty state
-    if (!peak && !drop) {
-        return (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <div className="flex items-start justify-between mb-2">
-                    <div>
-                        <h2 className="text-lg font-semibold text-gray-900">Peak & Drop Analysis</h2>
-                        <p className="text-xs text-gray-400 mt-0.5">Track the biggest changes in customer sentiment over time</p>
-                    </div>
-                </div>
+    const textClass = isPositive ? "text-emerald-600" : "text-red-600";
 
-                <div className="h-[180px] flex flex-col items-center justify-center gap-3 text-center">
-                    <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-300">
-                        <CalendarDays className="w-6 h-6" />
-                    </div>
-                    <p className="font-medium text-gray-700">Not enough review history yet to detect meaningful sentiment shifts.</p>
-                    <p className="text-sm text-gray-400">Collect more review periods to enable this analysis.</p>
-                </div>
-            </div>
-        );
-    }
+    const title = isPositive
+        ? "Strongest Positive Shift"
+        : "Strongest Negative Shift";
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <div className="flex items-start justify-between mb-3">
-                <div>
-                    <h2 className="text-lg font-semibold text-gray-900">Peak & Drop Analysis</h2>
-                    <p className="text-xs text-gray-400 mt-0.5">Track the biggest changes in customer sentiment over time</p>
-                </div>
-            </div>
+        <div className={`rounded-xl p-3 flex items-center justify-between gap-3 ${containerClass}`}>
+            <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                    <p className={`text-xs font-semibold ${textClass}`}>
+                        {title}
+                    </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                {/* Positive shift */}
-                <div className="rounded-xl border border-gray-100 bg-green-50 p-4">
-                    <div className="flex items-start justify-between">
-                        <div>
-                            <p className="text-xs text-green-700 font-semibold">Biggest Positive Shift</p>
-                            <p className="text-sm text-gray-800 font-medium mt-2">{peak?.date || '—'}</p>
-                        </div>
-                        <div className="flex items-center gap-2 text-green-700">
-                            <TrendingUp className="w-6 h-6" />
-                        </div>
-                    </div>
-
-                    <div className="mt-3">
-                        <p className="text-2xl font-semibold text-green-800">{formatSentiment(peak?.change)} sentiment</p>
-                        <p className="text-xs text-gray-500 mt-1">{peak?.review_count ?? 0} reviews</p>
-                        {peak?.change >= 0 && (
-                            <p className="text-xs text-green-700 mt-2">Strong improvement in customer feedback</p>
-                        )}
-                    </div>
-
-                    <div className="mt-4">
-                        <button className="text-sm text-green-700 border border-green-100 bg-white rounded-md px-3 py-1 hover:bg-green-50">Inspect reviews from this day</button>
-                    </div>
-                </div>
-
-                {/* Negative shift */}
-                <div className="rounded-xl border border-gray-100 bg-red-50 p-4">
-                    <div className="flex items-start justify-between">
-                        <div>
-                            <p className="text-xs text-red-700 font-semibold">Biggest Negative Shift</p>
-                            <p className="text-sm text-gray-800 font-medium mt-2">{drop?.date || '—'}</p>
-                        </div>
-                        <div className="flex items-center gap-2 text-red-700">
-                            <TrendingDown className="w-6 h-6" />
-                        </div>
-                    </div>
-
-                    <div className="mt-3">
-                        <p className="text-2xl font-semibold text-red-800">{formatSentiment(drop?.change)} sentiment</p>
-                        <p className="text-xs text-gray-500 mt-1">{drop?.review_count ?? 0} reviews</p>
-                        {drop?.change < 0 && (
-                            <p className="text-xs text-red-700 mt-2">Largest drop in customer sentiment detected</p>
-                        )}
-                    </div>
-
-                    <div className="mt-4">
-                        <button className="text-sm text-red-700 border border-red-100 bg-white rounded-md px-3 py-1 hover:bg-red-50">Inspect reviews from this day</button>
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                <div className="flex items-center gap-3">
-                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${meta?.is_reliable ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'}`}>
-                        {meta?.is_reliable ? 'Reliable' : 'Low Data Confidence'}
+                    <span className="text-[10px] text-gray-400">
+                        {item.date}
                     </span>
-                    <p className="text-xs text-gray-500">{meta?.sample_size ?? 0} review periods analyzed</p>
                 </div>
+
+                <p className="text-[11px] text-gray-600 truncate mt-1">
+                    {item.previous} → {item.current}
+                </p>
+
+                {item.interpretation && (
+                    <p className="text-[10px] text-gray-500 mt-1 line-clamp-2">
+                        {item.interpretation}
+                    </p>
+                )}
+            </div>
+
+            <div className={`flex items-center gap-1 ${textClass}`}>
+                <Icon className="w-3.5 h-3.5" />
+                <span className="text-xs font-semibold">
+                    {item.change.toFixed(2)}
+                </span>
+            </div>
+        </div>
+    );
+}
+
+export default function ShiftAnalysisCard({
+    data = null,
+    loading = false,
+    embedded = false,
+}) {
+    if (loading) {
+        return (
+            <div className="h-[90px] animate-pulse bg-gray-100 rounded-xl" />
+        );
+    }
+
+    const positiveShift = mapShift(data?.peak, "positive");
+    const negativeShift = mapShift(data?.drop, "negative");
+
+    if (!positiveShift && !negativeShift) {
+        return (
+            <div className={embedded ? "" : "bg-white rounded-xl border p-4"}>
+                <div className="flex items-center gap-2 text-gray-400">
+                    <CalendarDays className="w-4 h-4" />
+                    <p className="text-xs">Not enough data to detect meaningful shifts</p>
+                </div>
+            </div>
+        );
+    }
+
+    const shellClass = embedded
+        ? ""
+        : "bg-white rounded-xl border border-gray-100 p-4";
+
+    return (
+        <div className={shellClass}>
+            <div className="flex gap-3">
+                {positiveShift && (
+                    <div className="flex-1">
+                        <ShiftCard item={positiveShift} type="positive" />
+                    </div>
+                )}
+
+                {negativeShift && (
+                    <div className="flex-1">
+                        <ShiftCard item={negativeShift} type="negative" />
+                    </div>
+                )}
             </div>
         </div>
     );

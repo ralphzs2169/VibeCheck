@@ -1,45 +1,32 @@
 import { useNavigate } from 'react-router-dom';
+import { Sparkles, MapPin } from 'lucide-react';
 import { BASE_URL } from '../services/api';
 import ImagePlaceholder from './icons/ImagePlaceholder';
+import getVibeLevelFromScore from '../utils/vibeLabel';
 
 export default function BusinessCard({ business, vibeData }) {
 
   const navigate = useNavigate();
   
-  const getVibeColor = (score) => {
-    if (score >= 0.6) return 'text-green-600 bg-green-50';
-    if (score >= 0.4) return 'text-amber-600 bg-amber-50';
-    return 'text-red-600 bg-red-50';
-  };
-
-  const getScoreBadgeColor = (score) => {
-    if (score >= 0.6) return 'bg-green-500';
-    if (score >= 0.4) return 'bg-amber-500';
-    return 'bg-red-500';
-  };
 
   const handleViewInsights = () => {
     navigate(`/business/${business.id}`, { state: { business } });
   };
 
   const vibeScore = vibeData?.overall_score || 0.5;
-  const sentimentDistribution = vibeData?.sentiment_distribution || { positive: 0.33, neutral: 0.33, negative: 0.34 };
-
-  const getVibeLabel = (score) => {
-    if (score >= 0.7) return 'Exceptional';
-    if (score >= 0.6) return 'Great';
-    if (score >= 0.5) return 'Good';
-    if (score >= 0.4) return 'Fair';
-    return 'Needs Improvement';
-  };
+  const vibeLevelData = getVibeLevelFromScore(vibeScore, business.review_count);
+  const reviewCount = business?.review_count || 0;
+  const isNew = reviewCount < 10;
 
 
-  console.log('BusinessCard Rendered:', business.name, 'Vibe Score:', vibeScore);
-  console.log(business)
   return (
-    <div className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow overflow-hidden group">
+    <div
+      onClick={handleViewInsights}
+      className="bg-white border border-[#E2E8F0] rounded-xs shadow-sm hover:shadow-lg hover:-translate-y-1 transform-gpu transition-all overflow-hidden group cursor-pointer"
+    >
       {/* Image Container */}
-      <div className="relative h-48  overflow-hidden">
+      <div className="relative overflow-hidden rounded-t-xs">
+        <div className="w-full h-56 md:h-48 lg:h-56 xl:h-64">
         {business.image_path ? (
           <img
             src={`${BASE_URL}${business.image_path}`}
@@ -47,93 +34,67 @@ export default function BusinessCard({ business, vibeData }) {
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
-            <ImagePlaceholder className="w-16 h-16 object-cover" />
+          <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+            <ImagePlaceholder className="w-16 h-16 text-gray-400" />
+          </div>
         )}
 
-        {/* Vibe Score Badge */}
-       <div className="absolute top-3 right-3">
-  <div
-    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium backdrop-blur-md bg-white/80 shadow-sm border border-white/40`}
-  >
-    <span
-      className={`w-2 h-2 rounded-full ${
-        vibeScore >= 0.6
-          ? 'bg-green-500'
-          : vibeScore >= 0.4
-          ? 'bg-amber-500'
-          : 'bg-red-500'
-      }`}
-    ></span>
+        {/* Top-right score pill */}
+        <div className="absolute top-3 right-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm text-[#0F172A] text-sm font-semibold">
+            <Sparkles className="w-4 h-4 text-[#0F172A]" />
+            <span>{vibeScore ? vibeScore.toFixed(1) : '—'}</span>
+          </div>
+        </div>
 
-    <span className="text-gray-800 font-semibold">
-      {vibeScore.toFixed(1)}
-    </span>
-  </div>
-</div>
+        {/* Bottom-left status tag */}
+        <div className="absolute left-3 bottom-3">
+          {isNew ? (
+            <div className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-500 text-white">
+              New
+            </div>
+          ) : (
+            <div className={`px-3 py-1 rounded-full text-xs font-semibold ${getThemeClasses(vibeLevelData.theme)}`}>
+              {vibeLevelData.label}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Content Container */}
-      <div className="p-6">
-        {/* business Name & Location */}
-        <h3 className="text-xl font-bold text-gray-900 mb-1 group-hover:text-[#004687] transition">
-          {business.name}
-        </h3>
-        <p className="text-gray-500 text-sm mb-4 flex items-center gap-1">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          {business.location || 'Unknown Location'}
-        </p>
-
-        {/* Vibe Label */}
-        <div className={`inline-block px-3 py-1 rounded-full text-sm font-semibold mb-4 ${getVibeColor(vibeScore)}`}>
-          {getVibeLabel(vibeScore)}
+      </div>
+      <div className="p-5">
+        {/* Location Row */}
+        <div className="flex items-center gap-2 text-sm text-slate-500 mb-2">
+          <MapPin className="w-4 h-4 text-slate-400" />
+          <span>{business.location || 'Unknown Location'}</span>
         </div>
 
-        {/* Sentiment Distribution Bars */}
-        <div className="space-y-2 mb-5">
-          <div className="flex items-center justify-between text-xs font-medium">
-            <div className="flex gap-4">
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                Positive
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
-                Neutral
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                Negative
-              </span>
-            </div>
-          </div>
+        {/* Title */}
+        <h3 className="text-xl font-semibold text-[#0F172A] mb-2">{business.name}</h3>
 
-          <div className="flex gap-1 h-2 rounded-full overflow-hidden bg-gray-100">
-            <div
-              className="bg-green-500 transition-all"
-              style={{ width: `${(sentimentDistribution.positive || 0) * 100}%` }}
-            ></div>
-            <div
-              className="bg-gray-400 transition-all"
-              style={{ width: `${(sentimentDistribution.neutral || 0) * 100}%` }}
-            ></div>
-            <div
-              className="bg-red-500 transition-all"
-              style={{ width: `${(sentimentDistribution.negative || 0) * 100}%` }}
-            ></div>
-          </div>
+        {/* Footer divider + row */}
+        <div className="mt-4 border-t border-[#F1F5F9] pt-4 text-sm">
+          <div className="text-slate-400">{formatNumber(reviewCount)} Verified Reviews</div>
         </div>
-
-        {/* Button */}
-        <button
-          onClick={handleViewInsights}
-          className="w-full px-4 py-3 bg-[#004687] text-white rounded-lg font-medium hover:bg-blue-800 transition shadow-sm"
-        >
-          View Insights
-        </button>
       </div>
     </div>
   );
+}
+
+function formatNumber(n) {
+  return Intl.NumberFormat().format(n);
+}
+
+function getThemeClasses(theme) {
+  switch (theme) {
+    case 'emerald': return 'bg-emerald-100 text-emerald-800';
+    case 'teal': return 'bg-teal-100 text-teal-800';
+    case 'cyan': return 'bg-cyan-100 text-cyan-800';
+    case 'amber': return 'bg-amber-100 text-amber-800';
+    case 'orange': return 'bg-orange-100 text-orange-800';
+    case 'red': return 'bg-red-100 text-red-800';
+    case 'crimson': return 'bg-rose-100 text-rose-800';
+    default: return 'bg-gray-100 text-gray-800';
+  }
 }

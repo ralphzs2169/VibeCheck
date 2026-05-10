@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.core.constants import (
     FUTURE_FORECAST_MONTHS,
     MAX_VIBE_SCORE,
+    MIN_PEAK_DROP_POINTS,
     MIN_VIBE_FORECAST_POINTS,
     MIN_VIBE_SCORE,
     MIN_VIBE_TIMESERIES_POINTS,
@@ -16,7 +17,7 @@ from backend.app.core.constants import (
 )
 from backend.app.models.vibe_snapshot import VibeSnapshot
 from backend.app.services.analytics.helpers import reliability
-from backend.app.services.mapper_service import map_stability, map_vibe_score
+from backend.app.services.mapper_service import map_peak_drop_event, map_stability, map_vibe_score
 
 
 async def get_latest_vibe(db: AsyncSession, business_id: int):
@@ -88,31 +89,21 @@ async def get_vibe_volatility(db: AsyncSession, business_id: int):
     }
 
 
-
-async def get_vibe_score_over_time(db: AsyncSession, business_id: int, granularity: str):
-    """
-    Aggregates average vibe score from snapshots over time for a business,
-    grouped by the specified granularity (daily, weekly, monthly). This provides a time series 
-    of vibe scores to analyze trends and patterns.
-    """
+async def get_vibe_score_time_series(db: AsyncSession, business_id: int, granularity: str):
     if granularity == "daily":
         bucket = func.date(VibeSnapshot.snapshot_date)
-
     elif granularity == "weekly":
         bucket = func.strftime("%Y-%W", VibeSnapshot.snapshot_date)
-
     elif granularity == "monthly":
         bucket = func.strftime("%Y-%m", VibeSnapshot.snapshot_date)
-
     else:
         raise ValueError("Invalid granularity")
 
-    # Aggregate average vibe score and count of snapshots in each time bucket
     stmt = (
         select(
             bucket.label("period"),
             func.avg(VibeSnapshot.vibe_score).label("avg_score"),
-            func.count(VibeSnapshot.id).label("snapshot_count"),
+            func.count(VibeSnapshot.id).label("snapshot_count")
         )
         .where(VibeSnapshot.business_id == business_id)
         .group_by("period")
@@ -122,19 +113,55 @@ async def get_vibe_score_over_time(db: AsyncSession, business_id: int, granulari
     result = await db.execute(stmt)
     rows = result.all()
 
+    return [
+        {
+            "period": r.period,
+            "avg_score": float(r.avg_score or 0),
+            "snapshot_count": int(r.snapshot_count)
+        }
+        for r in rows
+    ]
+
+async def get_vibe_score_over_time(db, business_id, granularity):
+    data = await get_vibe_score_time_series(db, business_id, granularity)
+
     return {
-        "data": [
-            {
-                "period": row.period,
-                "avg_score": float(row.avg_score) if row.avg_score is not None else 0,
-                "snapshot_count": row.snapshot_count,
-            }
-            for row in rows
-        ],
-        "meta": reliability(
-            len(rows),
-            MIN_VIBE_TIMESERIES_POINTS
-        )
+        "data": data,
+        "meta": reliability(len(data), MIN_VIBE_TIMESERIES_POINTS)
+    }
+
+
+async def get_peak_and_drop(db: AsyncSession, business_id: int):
+    rows = await get_vibe_score_time_series(db, business_id, "daily")
+
+    if len(rows) < MIN_PEAK_DROP_POINTS:
+        return {
+            "peak": None,
+            "drop": None,
+            "meta": reliability(len(rows), MIN_PEAK_DROP_POINTS)
+        }
+
+    diffs = []
+
+    for i in range(1, len(rows)):
+        prev_score = float(rows[i - 1]["avg_score"] or 0)
+        curr_score = float(rows[i]["avg_score"] or 0)
+
+        diffs.append({
+            "date": rows[i]["period"],
+            "change": round(curr_score - prev_score, 4),
+            "previous_score": round(prev_score, 4),
+            "current_score": round(curr_score, 4),
+            "snapshot_count": int(rows[i].get("snapshot_count", 0))
+        })
+
+    peak = max(diffs, key=lambda x: x["change"])
+    drop = min(diffs, key=lambda x: x["change"])
+
+    return {
+        "peak": map_peak_drop_event(peak, "peak"),
+        "drop": map_peak_drop_event(drop, "drop"),
+        "meta": reliability(len(rows), MIN_PEAK_DROP_POINTS)
     }
 
 
@@ -194,7 +221,6 @@ async def get_vibe_score_trend(db: AsyncSession, business_id: int):
             MIN_VIBE_TREND_POINTS
         )
     }
-
 
 
 async def forecast_vibe_score(db: AsyncSession, business_id: int):

@@ -19,11 +19,22 @@ from backend.app.services.analytics.vibe_analytics import (
     get_vibe_score_over_time,
     get_vibe_score_trend,
     get_latest_vibe,
-    forecast_vibe_score
+    forecast_vibe_score,
+    get_peak_and_drop
 )
 
 from backend.app.services.analytics.aspect_analytics import (
-    get_business_aspect_summary
+    get_aspect_summary,
+    get_aspect_trends,
+    get_aspect_frequency
+)
+
+from backend.app.services.analytics.review_analytics import (
+    get_review_activity
+)
+
+from backend.app.services.insights_service import (
+    get_positive_drivers
 )
 
 router = APIRouter()
@@ -64,13 +75,22 @@ async def get_dashboard(
     vibe_score_daily = await get_vibe_score_over_time(db, business_id, "daily")
     vibe_score_weekly = await get_vibe_score_over_time(db, business_id, "weekly")
     vibe_score_monthly = await get_vibe_score_over_time(db, business_id, "monthly")
+    peak_and_drop = await get_peak_and_drop(db, business_id)
 
     # Aspect Analytics Summary and Trends
-    aspects = await get_business_aspect_summary(db, business_id)
+    aspect_summary = await get_aspect_summary(db, business_id)
+    aspect_trends = await get_aspect_trends(db, business_id)
+    aspect_frequency = await get_aspect_frequency(
+        db=db,
+        business_id=business_id,
+        aspects=aspect_summary,
+    )
 
     # Sentiment Analytics
     sentiment_over_time = await get_sentiment_over_time(db, business_id, "daily")
     sentiment_distribution = await get_sentiment_distribution(db, business_id)
+
+    review_activity = await get_review_activity(db, business_id)
 
 
     # derive UI label and type for vibe card based on latest vibe label
@@ -84,11 +104,11 @@ async def get_dashboard(
     business_health = await compute_business_health(
         vibe_score=latest_vibe.get("vibe_score", 0),
         trend=vibe_score_trend.get("trend", "stable"),
-        aspects=aspects["summary"],
+        aspects=aspect_summary["summary"],
         review_count=review_count
     )
 
-    # 
+    positive_drivers = get_positive_drivers(aspect_summary["summary"], aspect_trends["trends"], review_count)
     forecast_vibe =  await forecast_vibe_score(db, business_id)
 
     return {
@@ -97,10 +117,15 @@ async def get_dashboard(
         "business_health": business_health,
         "review_count": review_count,
 
+        "positive_drivers": positive_drivers,
+
         "vibe": latest_vibe,
         "vibe_ui": VIBE_UI_MAP.get(label_key),
         "vibe_score_trend": vibe_score_trend,
 
+        "peak_and_drop": peak_and_drop,
+
+        "review_activity": review_activity,
 
         "sentiment_over_time": sentiment_over_time,
         "sentiment_distribution": sentiment_distribution,
@@ -123,10 +148,11 @@ async def get_dashboard(
                 "label": v["label"],
 
                 # include time-series trend for each aspect
-                "trend": aspects["trends"].get(k, {}).get("trend", "stable"),
-                "timeline": aspects["trends"].get(k, {}).get("data", []),
+                "trend": aspect_trends["trends"].get(k, {}).get("trend", "stable"),
+                "change": aspect_trends["trends"].get(k, {}).get("change", 0),
             }
-            for k, v in aspects["summary"].items()
+            for k, v in aspect_summary["summary"].items()
         ],
-        "latest_reviews":  latest_reviews
+        "latest_reviews":  latest_reviews,
+        "aspect_frequency": aspect_frequency
     }

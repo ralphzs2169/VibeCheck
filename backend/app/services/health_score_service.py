@@ -24,11 +24,11 @@ def compute_confidence(review_count: int, cfg):
     return max(0.0, min(1.0, confidence))
 
 
-def compute_aspect_stability(values, cfg):
+def compute_aspect_alignment(values, cfg):
     min_aspects = cfg["aspects"]["min_aspects"]
 
     if len(values) < min_aspects:
-        return {"consistency": cfg["aspects"]["default_consistency"]}
+        return {"alignment": cfg["aspects"]["default_alignment"]}
 
     norm_vals = [(v + 1) / 2 for v in values]
     spread = np.std(norm_vals)
@@ -41,10 +41,10 @@ def compute_aspect_stability(values, cfg):
     penalty = len(values) / min_aspects
     penalty = max(0.2, min(1.0, penalty))
 
-    consistency = stability * penalty
+    alignment = stability * penalty
 
     return {
-        "consistency": max(0.0, min(1.0, consistency))
+        "alignment": max(0.0, min(1.0, alignment))
     }
 
 
@@ -84,7 +84,7 @@ def normalize_trend(trend: str, config: dict) -> float:
 def compute_final_score(
     vibe: float,
     trend: float,
-    consistency: float,
+    alignment: float,
     confidence: float,
     is_cold_start: bool,
     data_quality: str,
@@ -105,13 +105,13 @@ def compute_final_score(
     if is_cold_start:
         score = (
             vibe * weights["vibe"] +
-            consistency * weights["consistency"]
+            alignment * weights["alignment"]
         )
     else:
         score = (
             vibe * weights["vibe"] +
             trend * weights["trend"] +
-            consistency * weights["consistency"] +
+            alignment * weights["alignment"] +
             confidence * weights["confidence"]
         )
 
@@ -133,17 +133,18 @@ def get_no_data_business_health():
             "trend_label": "no_data",
             "review_count": 0,
             "data_quality": "no_data",
-            "is_cold_start": True
+            "is_cold_start": True,
+            "alignment_score": None
         },
         "label": "No data",
         "breakdown": {
             "vibe": None,
             "trend": None,
-            "consistency": None,
+            "alignment": None,
             "confidence": 0.0
         },
         "insights": {
-            "consistency": {
+            "alignment": {
                 "label": "Insufficient data",
                 "meaning": "No reviews available yet",
                 "level": "neutral"
@@ -171,10 +172,10 @@ def build_health_response(
     is_cold_start: bool,
     vibe_norm: float,
     trend_norm: float,
-    consistency: float,
+    alignment: float,
     confidence: float,
     health_label: dict,
-    consistency_label: dict,
+    alignment_label: dict,
     confidence_label: dict
 ):
     """
@@ -190,7 +191,8 @@ def build_health_response(
             "trend_label": trend,
             "review_count": review_count,
             "data_quality": data_quality,
-            "is_cold_start": is_cold_start
+            "is_cold_start": is_cold_start,
+            "alignment_score": alignment
         },
 
         "label": health_label["label"],
@@ -198,12 +200,12 @@ def build_health_response(
         "breakdown": {
             "vibe": float(vibe_norm),
             "trend": float(trend_norm),
-            "consistency": float(consistency),
+            "alignment": float(alignment),
             "confidence": float(confidence)
         },
 
         "insights": {
-            "consistency": consistency_label,
+            "alignment": alignment_label,
             "confidence": confidence_label,
             "health": health_label
         }
@@ -214,54 +216,54 @@ def build_health_response(
 # LABEL MAPPERS
 # --------------------------
 
-def map_consistency(consistency: float, review_count: int):
+def map_alignment(alignment: float, review_count: int):
     """
-    Converts aspect consistency score into a user-friendly label and meaning.
-    Consistency is a measure of how aligned customer opinions are across different aspects.
+    Converts aspect alignment score into a user-friendly label and meaning.
+    Alignment is a measure of how aligned customer opinions are across different aspects.
     """
 
-    # For very low review counts, we cannot reliably assess consistency, so we return a special label.
+    # For very low review counts, we cannot reliably assess alignment, so we return a special label.
     if 1 <= review_count < 3:
         return {
             "label": "Insufficient data",
-            "meaning": "Not enough reviews to evaluate consistency",
+            "meaning": "Not enough reviews to evaluate alignment",
             "level": "neutral"
         }
     
-    # Clamp consistency to [0, 1] range
-    consistency = max(0, min(1, consistency))
+    # Clamp alignment to [0, 1] range
+    alignment = max(0, min(1, alignment))
 
-    if consistency >= 0.8:
+    if alignment >= 0.8:
         return {
-            "label": "Highly consistent",
-            "meaning": "Customers agree strongly across all aspects",
+            "label": "Highly aligned",
+            "meaning": "Customer opinions agree strongly across aspects",
             "level": "excellent"
         }
 
-    elif consistency >= 0.6:
+    elif alignment >= 0.6:
         return {
-            "label": "Consistent",
+            "label": "Aligned",
             "meaning": "Customer opinions are mostly aligned",
             "level": "good"
         }
 
-    elif consistency >= 0.4:
+    elif alignment >= 0.4:
         return {
-            "label": "Mixed feedback",
+            "label": "Mixed alignment",
             "meaning": "Some differences across customer experiences",
             "level": "moderate"
         }
 
-    elif consistency >= 0.2:
+    elif alignment >= 0.2:
         return {
-            "label": "Inconsistent",
+            "label": "Misaligned",
             "meaning": "Customer experiences vary significantly",
             "level": "poor"
         }
 
     else:
         return {
-            "label": "Highly inconsistent",
+            "label": "Highly misaligned",
             "meaning": "Strong disagreement in customer feedback",
             "level": "critical"
         }

@@ -22,3 +22,15 @@ export const getAnalytics = async () => {
   });
   return response.data;
 };
+
+export const updateBusinessProfile = async (payload) => {
+  const token = localStorage.getItem("token");
+  const response = await axios.patch("/api/businesses/profile", payload, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
+  return response.data;
+};

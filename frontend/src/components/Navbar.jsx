@@ -15,6 +15,17 @@ function Navbar() {
   const [user, setUser] = useState(null);
 
   const isOwner = user?.role === "owner";
+  // Only consider the owner-only business management routes as "business owner routes"
+  const ownerBusinessRoutes = [
+    "/business/dashboard",
+    "/business/profile-management",
+    "/business/reviews",
+    "/business/analytics",
+  ];
+
+  const isBusinessOwnerRoute = ownerBusinessRoutes.some((r) =>
+    location.pathname.startsWith(r)
+  );
 
 
   useEffect(() => {
@@ -50,6 +61,10 @@ function Navbar() {
 
   const isLoginPage = location.pathname === "/login";
   const isRegisterPage = location.pathname === "/register";
+
+  if (isOwner || isBusinessOwnerRoute) {
+    return null;
+  }
 
   return (
     <>

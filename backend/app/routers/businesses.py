@@ -1,14 +1,18 @@
 import datetime
+import os
+import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import backend.app.services.auth_service as auth_service
 import backend.app.services.business_service as business_service
 from backend.app.core.database import get_db
 from backend.app.core.dependencies import get_models
 from backend.app.core.ml_registry import MLRegistry
 from backend.app.models.business import Business
+from backend.app.models.user import User
 from backend.app.schemas.business import (
     BusinessCreate,
     BusinessResponse,
@@ -30,7 +34,8 @@ router = APIRouter()
 async def create_business(
     business: BusinessCreate, db: Annotated[AsyncSession, Depends(get_db)]
 ) -> Business:
-    return await business_service.create_business(db, business)
+    created_business = await business_service.create_business(db, business)
+    return await business_service.get_business_profile(db, created_business.id)
 
 
 # -------------------------
@@ -85,6 +90,43 @@ async def get_business_profile(
     return await business_service.get_business_profile(db, business_id)
 
 
+@router.patch("/profile", response_model=BusinessResponse)
+async def update_current_business_profile(
+    db: AsyncSession = Depends(get_db),
+    name: str | None = Form(None),
+    location: str | None = Form(None),
+    short_description: str | None = Form(None),
+    image_path: str | None = Form(None),
+    image: UploadFile | None = File(None),
+    current_user: User = Depends(auth_service.get_authenticated_user),
+) -> Business:
+    business_id = business_service.resolve_user_business_id(current_user, None)
+
+    if image:
+        uploads_dir = "uploads"
+        os.makedirs(uploads_dir, exist_ok=True)
+        _, ext = os.path.splitext(image.filename or "")
+        ext = ext.lower() if ext else ".png"
+        filename = f"{uuid.uuid4().hex}{ext}"
+        file_path = os.path.join(uploads_dir, filename)
+
+        contents = await image.read()
+        with open(file_path, "wb") as f:
+            f.write(contents)
+
+        image_path = f"/uploads/{filename}"
+
+    update_payload = BusinessUpdate(
+        name=name,
+        location=location,
+        short_description=short_description,
+        image_path=image_path,
+    )
+
+    await business_service.update_business(db, business_id, update_payload)
+    return await business_service.get_business_profile(db, business_id)
+
+
 
 # -------------------------
 # GET SINGLE BUSINESS (GENERIC - MUST COME LAST)
@@ -93,8 +135,7 @@ async def get_business_profile(
 async def get_business(
     business_id: int, db: Annotated[AsyncSession, Depends(get_db)]
 ) -> Business:
-    business = await business_service.get_business_or_404(db, business_id)
-    return business
+    return await business_service.get_business_profile(db, business_id)
 
 
 # -------------------------
@@ -106,7 +147,8 @@ async def update_business(
     updated_business: BusinessUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Business:
-    return await business_service.update_business(db, business_id, updated_business)
+    await business_service.update_business(db, business_id, updated_business)
+    return await business_service.get_business_profile(db, business_id)
 
 
 # -------------------------

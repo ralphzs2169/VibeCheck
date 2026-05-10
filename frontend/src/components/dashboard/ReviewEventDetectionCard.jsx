@@ -1,151 +1,149 @@
 import React from "react";
-import { AlertTriangle, Activity, Zap, CheckCircle, Info, TrendingUp } from "lucide-react";
-import { GraphIcon } from "../icons/AnalyticsIcons";
+import {
+    AlertTriangle,
+    Activity,
+    Zap,
+    CheckCircle,
+    Info,
+    TrendingUp,
+    MessageCircle
+} from "lucide-react";
 
-const STATUS_MAP = {
-    true_event: { label: "Major Event Detected", style: "bg-red-50 text-red-700 border-red-100", Icon: AlertTriangle },
-    sentiment_event: { label: "Sentiment Shift", style: "bg-orange-50 text-orange-700 border-orange-100", Icon: TrendingUp },
-    activity_event: { label: "Activity Spike", style: "bg-blue-50 text-blue-700 border-blue-100", Icon: Activity },
-    emerging_event: { label: "Emerging Pattern", style: "bg-amber-50 text-amber-700 border-amber-100", Icon: Zap },
-    no_anomaly: { label: "Stable", style: "bg-green-50 text-green-700 border-green-100", Icon: CheckCircle },
-    insufficient_data: { label: "Insufficient Data", style: "bg-gray-50 text-gray-700 border-gray-100", Icon: Info },
+const URGENCY_BADGE = {
+    low: {
+        label: "Low Priority",
+        color: "text-green-700 bg-green-50 border-green-100",
+        Icon: CheckCircle
+    },
+    low_medium: {
+        label: "Monitor",
+        color: "text-blue-700 bg-blue-50 border-blue-100",
+        Icon: Info
+    },
+    medium: {
+        label: "Watch",
+        color: "text-amber-700 bg-amber-50 border-amber-100",
+        Icon: Activity
+    },
+    medium_high: {
+        label: "Attention",
+        color: "text-orange-700 bg-orange-50 border-orange-100",
+        Icon: TrendingUp
+    },
+    high: {
+        label: "Urgent",
+        color: "text-red-700 bg-red-50 border-red-100",
+        Icon: AlertTriangle
+    },
+    unknown: {
+        label: "No Signal",
+        color: "text-gray-700 bg-gray-50 border-gray-100",
+        Icon: Info
+    },
 };
 
-function Badge({ type }) {
-    const key = STATUS_MAP[type] ? type : "insufficient_data";
-    const { label, style, Icon } = STATUS_MAP[key];
-    return (
-        <span className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold ${style}`}>
-            <div className="flex items-center gap-2">
-                <Icon className="w-4 h-4" />
-                <span>{label}</span>
-            </div>
-        </span>
-    );
+const URGENCY_INSIGHT = {
+    low: {
+        bg: "bg-green-50 border-green-100 text-green-800",
+        Icon: CheckCircle
+    },
+    low_medium: {
+        bg: "bg-blue-50 border-blue-100 text-blue-800",
+        Icon: Info
+    },
+    medium: {
+        bg: "bg-amber-50 border-amber-100 text-amber-800",
+        Icon: Activity
+    },
+    medium_high: {
+        bg: "bg-orange-50 border-orange-100 text-orange-800",
+        Icon: TrendingUp
+    },
+    high: {
+        bg: "bg-red-50 border-red-100 text-red-800",
+        Icon: AlertTriangle
+    },
+    unknown: {
+        bg: "bg-gray-50 border-gray-100 text-gray-700",
+        Icon: Info
+    },
+};
+
+function interpretSignal(v) {
+    const a = Math.abs(v || 0);
+    if (a < 1) return "Stable";
+    if (a < 2) return "Shifting";
+    return "Changing Fast";
 }
 
-function MiniStat({ label, value }) {
+function Chip({ label, value }) {
     return (
-        <div className="rounded-xl border border-gray-100 bg-white px-3 py-2 text-center">
-            <p className="text-xs text-gray-500">{label}</p>
-            <p className="text-sm font-semibold text-gray-800">{value}</p>
+        <div className="flex items-center justify-between p-2 rounded-lg border border-gray-200 bg-white">
+            <span className="text-[11px] text-gray-500">{label}</span>
+            <span className="text-[11px] font-semibold text-gray-800">
+                {value}
+            </span>
         </div>
     );
 }
 
-export default function ReviewEventDetectionCard({ data = null, loading = false }) {
-    // loading skeleton
-    if (loading) {
-        return (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 animate-pulse">
-                <div className="h-6 bg-gray-200 rounded w-1/3 mb-3" />
-                <div className="h-4 bg-gray-200 rounded w-2/3 mb-6" />
-                <div className="h-28 bg-gray-200 rounded mb-4" />
-                <div className="flex gap-3">
-                    <div className="h-12 bg-gray-200 rounded w-24" />
-                    <div className="h-12 bg-gray-200 rounded w-24" />
-                </div>
-            </div>
-        );
-    }
+export default function ReviewEventDetectionCard({ data }) {
+    const urgency = data?.urgency || "unknown";
 
-    const payload = data || {};
-    const eventType = payload.event_type || "insufficient_data";
+    const badge = URGENCY_BADGE[urgency] || URGENCY_BADGE.unknown;
+    const insightStyle = URGENCY_INSIGHT[urgency] || URGENCY_INSIGHT.unknown;
 
-    // empty / insufficient data state
-    if (eventType === "insufficient_data") {
-        return (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <div className="flex items-start justify-between mb-2">
-                    <div>
-                        <h2 className="text-lg font-semibold text-gray-900">Customer Trend Events</h2>
-                        <p className="text-xs text-gray-400 mt-0.5">Detect unusual shifts in customer sentiment and review activity</p>
-                    </div>
-                    <Badge type="insufficient_data" />
-                </div>
+    const BadgeIcon = badge.Icon;
+    const InsightIcon = insightStyle.Icon;
 
-                <div className="h-[220px] flex flex-col items-center justify-center gap-3 text-center">
-                    <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-300">
-                        <GraphIcon className="w-6 h-6" />
-                    </div>
-                    <p className="font-medium text-gray-700">Not enough customer reviews yet to detect meaningful changes.</p>
-                    <p className="text-sm text-gray-400">Collect more review periods to enable anomaly detection.</p>
-                </div>
-            </div>
-        );
-    }
-
-    const confidence = typeof payload.confidence === "number" ? payload.confidence : 0;
-    const interp = payload.interpretation || "No interpretation available.";
-    const sentimentZ = payload?.z_scores?.sentiment_z;
-    const volumeZ = payload?.z_scores?.volume_z;
-    const baselineNote = payload?.baseline?.note;
-    const meta = payload?.meta || {};
+    const z = data?.z_scores || {};
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <div className="flex items-start justify-between mb-3">
-                <div>
-                    <h2 className="text-lg font-semibold text-gray-900">Customer Trend Events</h2>
-                    <p className="text-xs text-gray-400 mt-0.5">Detect unusual shifts in customer sentiment and review activity</p>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+
+            {/* Header */}
+            <div className="flex items-center justify-between">
+
+                <div className="flex items-center gap-2">
+                    <MessageCircle className="w-5 h-5 text-gray-700" />
+                    <p className="text-lg font-semibold text-gray-900">
+                        Review Activity
+                    </p>
                 </div>
-                <Badge type={eventType} />
+
+                <span className={`px-2 py-0.5 rounded-full border text-[11px] font-semibold flex items-center gap-1 ${badge.color}`}>
+                    <BadgeIcon className="w-3.5 h-3.5" />
+                    {badge.label}
+                </span>
             </div>
 
-            {/* Confidence */}
-            <div className="flex items-center gap-4 mb-4">
-                <div className="flex-1">
-                    <p className="text-xs text-gray-500 mb-2">Detection Confidence</p>
+            {/* Subtitle */}
+            <p className="text-[11px] text-gray-400 mt-1">
+                Monitors shifts in customer feedback patterns over time
+            </p>
 
-                    <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-                        <div
-                            className={`h-full rounded-full ${confidence >= 70 ? "bg-blue-500" : confidence >= 40 ? "bg-amber-400" : "bg-gray-300"}`}
-                            style={{ width: `${Math.max(0, Math.min(100, confidence))}%`, transition: "width 700ms ease" }}
-                        />
-                    </div>
-                </div>
-
-                <div className="w-20 text-right">
-                    <p className="text-sm font-semibold text-gray-900">{Math.round(confidence)}%</p>
-                    <p className="text-xs text-gray-400">confidence</p>
-                </div>
+            {/* Chips */}
+            <div className="mt-3 grid grid-cols-2 gap-2">
+                <Chip
+                    label="Customer Experience"
+                    value={interpretSignal(z.sentiment_z)}
+                />
+                <Chip
+                    label="Customer Engagement"
+                    value={interpretSignal(z.volume_z)}
+                />
             </div>
 
-            {/* Interpretation / Insight */}
-            <div className="rounded-xl border border-gray-100 bg-blue-50 p-3 mb-4">
-                <p className="text-sm font-medium text-gray-900">Insight</p>
-                <p className="text-xs text-gray-700 mt-1">{interp}</p>
-            </div>
+            {/* Insight (urgency-colored) */}
+            {data?.interpretation && (
+                <div className={`mt-3 p-3 rounded-xl border flex gap-2 items-start ${insightStyle.bg}`}>
+                    <InsightIcon className="w-4 h-4 mt-0.5" />
 
-            {/* Technical signals */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="rounded-xl border border-gray-100 bg-white px-3 py-2">
-                    <p className="text-xs text-gray-500">Sentiment Change</p>
-                    <p className="text-sm font-semibold text-gray-800">{typeof sentimentZ === 'number' ? `${sentimentZ > 0 ? '+' : ''}${sentimentZ.toFixed(2)}σ` : '—'}</p>
+                    <p className="text-[11px] leading-snug">
+                        {data.interpretation}
+                    </p>
                 </div>
-
-                <div className="rounded-xl border border-gray-100 bg-white px-3 py-2">
-                    <p className="text-xs text-gray-500">Activity Change</p>
-                    <p className="text-sm font-semibold text-gray-800">{typeof volumeZ === 'number' ? `${volumeZ > 0 ? '+' : ''}${volumeZ.toFixed(2)}σ` : '—'}</p>
-                </div>
-            </div>
-
-            {/* Baseline note */}
-            {baselineNote && (
-                <p className="text-xs text-gray-400 mb-4">{baselineNote}</p>
             )}
-
-            {/* Footer: reliability */}
-            <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                <div className="flex items-center gap-3">
-                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${meta?.is_reliable ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'}`}>
-                        {meta?.is_reliable ? 'Reliable' : 'Low Data Confidence'}
-                    </span>
-                    <p className="text-xs text-gray-500">{(meta?.sample_size ?? 0)} review periods analyzed</p>
-                </div>
-
-                <div className="text-xs text-gray-400">&nbsp;</div>
-            </div>
         </div>
     );
 }

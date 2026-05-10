@@ -1,4 +1,5 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { PieChart as PieChartIcon } from "lucide-react";
 import { GraphIcon } from "../icons/AnalyticsIcons";
 
 const COLORS = {
@@ -46,9 +47,12 @@ function SentimentPieChart({ distribution = {} }) {
     if (total === 0) {
         return (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-6">
-                    Sentiment Distribution
-                </h2>
+                <div className="flex items-center gap-2 mb-6">
+                    <PieChartIcon className="w-5 h-5 text-gray-700" />
+                    <h2 className="text-lg font-semibold text-gray-900">
+                        Sentiment Distribution
+                    </h2>
+                </div>
 
                 <div className="h-[320px] flex flex-col items-center justify-center gap-3 text-center px-6">
                     <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-300">
@@ -90,9 +94,12 @@ function SentimentPieChart({ distribution = {} }) {
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
 
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">
-                Sentiment Distribution
-            </h2>
+            <div className="flex items-center gap-2 mb-1">
+                <PieChartIcon className="w-5 h-5 text-gray-700" />
+                <h2 className="text-lg font-semibold text-gray-900">
+                    Sentiment Distribution
+                </h2>
+            </div>
 
             <p className="text-xs text-gray-400 mb-5">
                 Based on {total} review{total !== 1 ? "s" : ""}

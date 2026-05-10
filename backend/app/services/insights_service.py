@@ -226,7 +226,7 @@ def get_negative_signals(
     # High volatility in sentiment
     if sentiment_volatility.get("stability") == "unstable":
         signals.append({
-            "text": "Customer feedback is becoming unpredictable and inconsistent",
+            "text": "Customer feedback is fluctuating over time",
             "severity": "medium"
         })
 

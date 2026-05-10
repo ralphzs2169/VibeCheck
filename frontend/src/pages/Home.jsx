@@ -5,7 +5,11 @@ import InsightCard from '../components/InsightCard';
 import BusinessGrid from '../components/BusinessGrid';
 import FiltersBar from '../components/FiltersBar';
 import Footer from '../components/Footer';
+import PremiumBusinesses from '../components/PremiumBusinesses';
+import JourneySection from '../components/JourneySection';
+import OwnerAnalyticsSection from '../components/OwnerAnalyticsSection';
 import axios from 'axios';
+import WaveBackground from '../components/WaveBackground';
 
 export default function Home() {
   const [businesses, setBusinesses] = useState([]);
@@ -114,130 +118,44 @@ export default function Home() {
     setFilteredBusinesses(filtered);
   }, [searchTerm, locationFilter, sortBy, businesses, vibeDataMap]);
 
-  // // Calculate insights
-  // const calculateInsights = () => {
-  //   if (businesses.length === 0) {
-  //     return {
-  //       mostPositive: [],
-  //       mostControversial: [],
-  //       rising: [],
-  //     };
-  //   }
 
-  //   // Most Positive (highest overall scores)
-  //   const mostPositive = [...businesses]
-  //     .sort(
-  //       (a, b) =>
-  //         (vibeDataMap[b.id]?.overall_score || 0) -
-  //         (vibeDataMap[a.id]?.overall_score || 0)
-  //     )
-  //     .slice(0, 3)
-  //     .map((r) => ({
-  //       name: r.name,
-  //       score: vibeDataMap[r.id]?.overall_score || 0.5,
-  //     }));
-
-  //   // Most Controversial (highest sentiment volatility - mix of positive and negative)
-  //   const mostControversial = [...businesses]
-  //     .map((business) => {
-  //       const dist = vibeDataMap[business.id]?.sentiment_distribution || {
-  //         positive: 0.33,
-  //         neutral: 0.33,
-  //         negative: 0.34,
-  //       };
-  //       const controversy = Math.abs(dist.positive - dist.negative);
-  //       return {
-  //         business,
-  //         controversy,
-  //         score: vibeDataMap[business.id]?.overall_score || 0.5,
-  //       };
-  //     })
-  //     .sort((a, b) => b.controversy - a.controversy)
-  //     .slice(0, 3)
-  //     .map((item) => ({
-  //       name: item.business.name,
-  //       score: item.score,
-  //     }));
-
-  //   // Rising (would need trend data, for now using variety)
-  //   const rising = [...businesses]
-  //     .sort(
-  //       (a, b) =>
-  //         (vibeDataMap[b.id]?.overall_score || 0) -
-  //         (vibeDataMap[a.id]?.overall_score || 0)
-  //     )
-  //     .slice(3, 6)
-  //     .map((r) => ({
-  //       name: r.name,
-  //       score: vibeDataMap[r.id]?.overall_score || 0.5,
-  //     }));
-
-  //   return {
-  //     mostPositive,
-  //     mostControversial,
-  //     rising,
-  //   };
-  // };
-
-  // const insights = calculateInsights();
+  // Show loader while data is loading
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#004687] mx-auto mb-4" />
+          <p className="text-gray-600">Discovering amazing resorts...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white min-h-screen">
       {/* Hero Section with Search */}
+
+        <WaveBackground
+          height="300px"        // Height of the wave section (default: "300px")
+          position="bottom"     // "top" or "bottom" (default: "bottom")
+          opacity={0.08}        // Global opacity multiplier 0-1 (default: 0.08)
+          animate={true}       // Enable floating animation (default: false)
+          className=""          // Additional Tailwind classes
+        />
       <HeroSection>
         <SearchBar onSearch={setSearchTerm} onLocationFilter={setLocationFilter} />
       </HeroSection>
 
-      {/* Main Content */}
-      <section className="py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
-        <div className="max-w-6xl mx-auto">
-          {/* Featured Insights */}
-          {/* <div className="mb-16">
-            <h2 className="text-3xl font-bold text-gray-900 mb-8">Key Insights Today</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <InsightCard
-                icon="🔥"
-                title="Most Positive Today"
-                subtitle="Highest guest satisfaction"
-                businesses={insights.mostPositive}
-                type="positive"
-              />
-              <InsightCard
-                icon="⚖️"
-                title="Most Controversial"
-                subtitle="Highly mixed reviews"
-                businesses={insights.mostControversial}
-                type="controversial"
-              />
-              <InsightCard
-                icon="📈"
-                title="Rising Resort"
-                subtitle="Gaining engagement"
-                businesses={insights.rising}
-                type="rising"
-              />
-            </div>
-          </div> */}
+      {/* Premium Destinations (top 3) */}
+      <PremiumBusinesses businesses={filteredBusinesses} vibeDataMap={vibeDataMap} />
 
-          {/* Filters and Sorting */}
-          <div className="mb-8">
-            <FiltersBar sortBy={sortBy} onSortChange={setSortBy} />
-          </div>
+      {/* Journey section */}
+      <JourneySection />
 
-          {/* Resort Grid */}
-          <div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-8">
-              Discover Resorts ({filteredBusinesses.length})
-            </h2>
-            <BusinessGrid
-              businesses={filteredBusinesses}
-              vibeDataMap={vibeDataMap}
-              isLoading={isLoading}
-              error={error}
-            />
-          </div>
-        </div>
-      </section>
+    
+      {/* Owner Analytics Section */}
+      <OwnerAnalyticsSection />
+
 
       {/* Footer */}
       <Footer />

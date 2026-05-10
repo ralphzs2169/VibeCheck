@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-
+import { Heart } from "lucide-react";
+import { useEffect, useState } from "react";
 /* -----------------------------
    HELPERS
 ------------------------------ */
@@ -70,16 +70,16 @@ function HealthInsightsTooltip({ data }) {
                     </div>
                 </div>
 
-                {/* CONSISTENCY */}
+                {/* ALIGNMENT */}
                 <div>
                     <div className="flex justify-between">
-                        <p className="font-medium">Consistency</p>
+                        <p className="font-medium">Review Alignment</p>
                         <p className="font-semibold text-[#004687]">
-                            {insights.consistency?.label ?? "--"}
+                            {insights.alignment?.label ?? "--"}
                         </p>
                     </div>
                     <p className="text-gray-400 text-[10px]">
-                        {insights.consistency?.meaning}
+                        {insights.alignment?.meaning}
                     </p>
                 </div>
 
@@ -278,9 +278,12 @@ function HealthGauge({ data }) {
 
             {/* HEADER */}
             <div>
-                <h3 className="text-sm font-semibold text-gray-900">
-                    Business Health
-                </h3>
+                <div className="flex items-center gap-2 mb-0.5">
+                    <Heart className="w-5 h-5 text-gray-700 fill-gray-700" />
+                    <h3 className="text-sm font-semibold text-gray-900">
+                        Business Health
+                    </h3>
+                </div>
                 <p className="text-xs text-gray-400">
                     Composite performance score
                 </p>

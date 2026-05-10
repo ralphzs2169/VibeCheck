@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Target } from "lucide-react";
 import {
     ImprovingIcon,
     DecliningIcon,
@@ -17,20 +18,20 @@ const FIXED_ASPECT_ORDER = [
 ];
 
 // -----------------------------
-// SCORE LABEL
+// LABEL FORMATTER
 // -----------------------------
-function formatAspect(score) {
-    let label = "Mixed";
+function formatLabel(label, score) {
+    if (!label) return "No data";
 
-    if (score >= 0.8) label = "Highly Positive";
-    else if (score >= 0.3) label = "Positive";
-    else if (score <= -0.8) label = "Highly Negative";
-    else if (score <= -0.3) label = "Negative";
+    if (label === "positive") {
+        return score >= 0.8 ? "Highly Positive" : "Positive";
+    }
 
-    return {
-        raw: score,
-        label,
-    };
+    if (label === "negative") {
+        return score <= -0.8 ? "Highly Negative" : "Negative";
+    }
+
+    return "Neutral";
 }
 
 // -----------------------------
@@ -43,7 +44,6 @@ function formatTrend(trend) {
                 label: "Improving",
                 Icon: ImprovingIcon,
                 color: "text-green-600",
-                bg: "bg-green-50",
             };
 
         case "declining":
@@ -51,7 +51,6 @@ function formatTrend(trend) {
                 label: "Declining",
                 Icon: DecliningIcon,
                 color: "text-red-600",
-                bg: "bg-red-50",
             };
 
         default:
@@ -59,7 +58,6 @@ function formatTrend(trend) {
                 label: "Stable",
                 Icon: StableIcon,
                 color: "text-gray-500",
-                bg: "bg-gray-50",
             };
     }
 }
@@ -67,16 +65,15 @@ function formatTrend(trend) {
 // -----------------------------
 // TOOLTIP
 // -----------------------------
-function AspectTooltip({ data, trendUI }) {
-    if (!data || !trendUI) return null;
+function AspectTooltip({ aspect, trendUI }) {
+    if (!aspect) return null;
 
     const Icon = trendUI.Icon;
 
     return (
-        <div className="absolute z-20 -top-16 left-1/2 -translate-x-1/2 bg-white border border-gray-100 shadow-lg rounded-xl px-3 py-2 text-xs whitespace-nowrap">
-
+        <div className="absolute z-20 -top-20 left-1/2 -translate-x-1/2 bg-white border border-gray-100 shadow-lg rounded-xl px-3 py-2 text-xs whitespace-nowrap">
             <p className="text-gray-500 mb-1">
-                {data.label}
+                {formatLabel(aspect.label, aspect.score)}
             </p>
 
             <div className={`flex items-center gap-1 font-semibold ${trendUI.color}`}>
@@ -85,7 +82,12 @@ function AspectTooltip({ data, trendUI }) {
             </div>
 
             <p className="text-[#004687] mt-1 font-medium">
-                Score: {data.raw.toFixed(2)}
+                Score: {aspect.score.toFixed(2)}
+            </p>
+
+            <p className="text-gray-500 mt-1">
+                Change: {aspect.change > 0 ? "+" : ""}
+                {aspect.change.toFixed(2)}
             </p>
         </div>
     );
@@ -94,7 +96,11 @@ function AspectTooltip({ data, trendUI }) {
 // -----------------------------
 // MAIN COMPONENT
 // -----------------------------
-function AspectAnalytics({ aspects = [], onViewAll }) {
+function AspectAnalytics({
+    aspects = [],
+    onViewAll,
+    compact = true,
+}) {
     const [hovered, setHovered] = useState(null);
     const [animate, setAnimate] = useState(false);
 
@@ -107,68 +113,54 @@ function AspectAnalytics({ aspects = [], onViewAll }) {
         aspects.map((a) => [a.name, a])
     );
 
-    // -----------------------------
-    // FIXED + DATA-AWARE RANKING
-    // -----------------------------
-    const ordered = [...FIXED_ASPECT_ORDER];
-
     const withData = [];
     const withoutData = [];
 
-    for (const name of ordered) {
-        if (aspectMap[name]) {
-            withData.push(name);
-        } else {
-            withoutData.push(name);
-        }
+    for (const name of FIXED_ASPECT_ORDER) {
+        if (aspectMap[name]) withData.push(name);
+        else withoutData.push(name);
     }
 
     const sortedAspects = [...withData, ...withoutData];
 
-    const DISPLAY_LIMIT = 4;
+    const visibleAspects = compact
+        ? sortedAspects.slice(0, 4)
+        : sortedAspects;
 
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col">
+            <div className="flex items-center gap-2 mb-0.5">
+                <Target className="w-5 h-5 text-gray-700" />
+                <h2 className="text-lg font-semibold text-gray-900">
+                    Aspect Health
+                </h2>
+            </div>
 
-            <h2 className="text-lg font-semibold text-gray-900">
-                Aspect Analytics
-            </h2>
-            <p className="text-xs text-gray-400 mt-0.5 mb-3">
-                Key factors influencing overall business perception
+            <p className="text-xs text-gray-400 mt-0.5 mb-4">
+                How customers feel and how it changes by aspect
             </p>
 
             <div className="flex flex-col gap-5 flex-1">
-
-                {sortedAspects.slice(0, DISPLAY_LIMIT).map((aspectName, index) => {
+                {visibleAspects.map((aspectName, index) => {
                     const aspect = aspectMap[aspectName];
                     const hasData = !!aspect;
 
-                    const score = aspect?.score;
-                    const trend = aspect?.trend;
-
-                    const data = hasData ? formatAspect(score) : null;
-                    const trendUI = formatTrend(trend);
-
+                    const trendUI = formatTrend(aspect?.trend);
                     const Icon = trendUI.Icon;
 
-                    const rawPercent = hasData
+                    const score = aspect?.score ?? 0;
+
+                    const percent = hasData
                         ? Math.round(((score + 1) / 2) * 100)
                         : 0;
 
-                    const MIN_NEGATIVE_PERCENT = 6;
-
-                    const percent = hasData
-                        ? score <= -0.8
-                            ? Math.max(rawPercent, MIN_NEGATIVE_PERCENT)
-                            : rawPercent
-                        : 0;
-
-                    const barColor =
-                        score >= 0.3
-                            ? "bg-green-500"
-                            : score <= -0.3
-                            ? "bg-red-500"
-                            : "bg-yellow-400";
+                    const barColor = !hasData
+                        ? "bg-gray-200"
+                        : score >= 0.3
+                        ? "bg-green-500"
+                        : score <= -0.3
+                        ? "bg-red-500"
+                        : "bg-yellow-400";
 
                     return (
                         <div
@@ -177,34 +169,55 @@ function AspectAnalytics({ aspects = [], onViewAll }) {
                             onMouseEnter={() => setHovered(aspectName)}
                             onMouseLeave={() => setHovered(null)}
                         >
-
-                            {/* TOOLTIP */}
                             {hovered === aspectName && hasData && (
                                 <AspectTooltip
-                                    data={data}
+                                    aspect={aspect}
                                     trendUI={trendUI}
                                 />
                             )}
 
+    
                             {/* HEADER */}
-                            <div className="flex justify-between items-center mb-1">
+                            <div className="flex justify-between items-start mb-2">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium text-gray-800 capitalize">
+                                            {aspectName}
+                                        </span>
 
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm text-gray-700 font-medium capitalize">
-                                        {aspectName}
-                                    </span>
-
-                                    {hasData && (
-                                        <Icon
-                                            className={`w-5 h-5 ${trendUI.color}`}
-                                        />
-                                    )}
+                                         {hasData && (
+                                            <div className="flex items-center gap-1 text-xs whitespace-nowrap">
+                                                <Icon className={`w-3.5 h-3.5 ${trendUI.color}`} />
+                                                <span className={trendUI.color}>
+                                                    {aspect.change > 0 ? "+" : ""}
+                                                    {aspect.change.toFixed(2)}
+                                                </span>
+                                                <span className="text-gray-400">
+                                                    {trendUI.label}
+                                                </span>
+                                            </div>
+                                        )}
+                                       
+                                    </div>
                                 </div>
 
-                                <span className={`text-xs ${hasData ? "font-medium text-gray-800" : "text-gray-400"}`}>
-                                    {hasData ? data.label : "No mentions yet"}
-                                </span>
-
+                                {hasData ? (
+                                            <span
+                                                className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
+                                                    aspect.label === "positive"
+                                                        ? "bg-green-50 text-green-700"
+                                                        : aspect.label === "negative"
+                                                        ? "bg-red-50 text-red-700"
+                                                        : "bg-yellow-50 text-yellow-700"
+                                                }`}
+                                            >
+                                                {formatLabel(aspect.label, aspect.score)}
+                                            </span>
+                                ) : (
+                                    <span className="text-xs text-gray-400 italic">
+                                        no mentions yet
+                                    </span>
+                                )}
                             </div>
 
                             {/* BAR */}
@@ -212,23 +225,26 @@ function AspectAnalytics({ aspects = [], onViewAll }) {
                                 <div
                                     className={`h-full rounded-full transition-all duration-700 ease-out ${barColor}`}
                                     style={{
-                                        width: animate ? `${percent}%` : "0%",
+                                        width: animate
+                                            ? `${percent}%`
+                                            : "0%",
                                         transitionDelay: `${index * 60}ms`,
                                     }}
                                 />
                             </div>
-
                         </div>
                     );
                 })}
             </div>
 
-            <button
-                onClick={onViewAll}
-                className="mt-6 w-full border border-gray-200 rounded-xl py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-                View All Aspects
-            </button>
+            {compact && (
+                <button
+                    onClick={onViewAll}
+                    className="mt-6 w-full border border-gray-200 rounded-xl py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                    View All Aspects
+                </button>
+            )}
         </div>
     );
 }

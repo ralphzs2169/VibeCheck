@@ -28,6 +28,7 @@ Thumbs.db
 
 backend/uploads/
 node_modules/
+uploads
 
 # Logs
 logs

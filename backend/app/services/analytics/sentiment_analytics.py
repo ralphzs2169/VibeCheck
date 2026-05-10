@@ -3,7 +3,6 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.constants import (
-    MIN_PEAK_DROP_POINTS,
     MIN_SENTIMENT_DISTRIBUTION_REVIEWS,
     MIN_SENTIMENT_TIMESERIES_POINTS,
     MIN_SENTIMENT_TREND_POINTS,
@@ -109,82 +108,6 @@ async def get_sentiment_distribution(db: AsyncSession, business_id: int):
         "total_reviews": total_reviews,
         "meta": reliability(total_reviews, MIN_SENTIMENT_DISTRIBUTION_REVIEWS)
     }
-
-
-async def get_peak_and_drop(db: AsyncSession, business_id: int):
-    """
-    Identify the largest positive and negative day-over-day sentiment shifts.
-
-    Returns:
-    - peak: biggest positive sentiment change
-    - drop: biggest negative sentiment change
-    - includes sentiment before/after change + review volume
-    """
-
-    stmt = (
-        select(
-            func.date(Review.created_at).label("date"),
-            func.avg(Review.sentiment_score).label("avg_score"),
-            func.count(Review.id).label("review_count")
-        )
-        .where(Review.business_id == business_id)
-        .group_by(func.date(Review.created_at))
-        .order_by(func.date(Review.created_at))
-    )
-
-    result = await db.execute(stmt)
-    rows = result.all()
-
-    # Reliability check
-    if len(rows) < MIN_PEAK_DROP_POINTS:
-        return {
-            "peak": None,
-            "drop": None,
-            "meta": reliability(
-                len(rows),
-                MIN_PEAK_DROP_POINTS
-            )
-        }
-
-    diffs = []
-
-    # Compute day-over-day sentiment changes
-    for i in range(1, len(rows)):
-        prev_score = float(rows[i - 1].avg_score or 0)
-        curr_score = float(rows[i].avg_score or 0)
-
-        diff = curr_score - prev_score
-
-        diffs.append({
-            "date": rows[i].date,
-            "change": round(diff, 4),
-            "previous_score": round(prev_score, 4),
-            "current_score": round(curr_score, 4),
-            "review_count": int(rows[i].review_count)
-        })
-
-    if not diffs:
-        return {
-            "peak": None,
-            "drop": None,
-            "meta": reliability(
-                len(rows),
-                MIN_PEAK_DROP_POINTS
-            )
-        }
-
-    peak = max(diffs, key=lambda x: x["change"])
-    drop = min(diffs, key=lambda x: x["change"])
-
-    return {
-        "peak": peak,
-        "drop": drop,
-        "meta": reliability(
-            len(rows),
-            MIN_PEAK_DROP_POINTS
-        )
-    }
-
 
 
 async def get_sentiment_trend_slope(db: AsyncSession, business_id: int):

@@ -8,6 +8,7 @@ import {
     CartesianGrid,
     Legend,
 } from "recharts";
+import { BarChart3 } from "lucide-react";
 
 import { GraphIcon } from "../icons/AnalyticsIcons";
 import ReviewProgressState from "./ReviewProgressState";
@@ -61,13 +62,16 @@ function SentimentChart({ data = [], meta = {} }) {
 
             {/* HEADER */}
             <div className="flex items-center justify-between mb-1">
-                <h2 className="text-lg font-semibold text-gray-900">
-                    Sentiment Over Time
-                </h2>
+                <div className="flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-gray-700" />
+                    <h2 className="text-lg font-semibold text-gray-900">
+                        Customer Sentiment Trend
+                    </h2>
+                </div>
             </div>
 
             <p className="text-xs text-gray-400 mb-5">
-                Daily breakdown of positive, neutral, and negative signals
+                Monitor positive and negative feedback patterns over time
             </p>
 
             {/* BODY */}

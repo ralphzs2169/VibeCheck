@@ -89,7 +89,7 @@
 #         if isinstance(a, dict) and "avg_score" in a
 #     ]
 
-#     aspect_result = health_score_service.compute_aspect_stability(
+#     aspect_result = health_score_service.compute_aspect_alignment(
 #         aspect_values,
 #         config
 #     )
@@ -119,7 +119,7 @@
 
 #     # map final score to health label for UI presentation (e.g. "Healthy", "At Risk", "Unhealthy")
 #     health_label = health_score_service.map_business_health_label(score)
-#     consistency_label = health_score_service.map_consistency(consistency, review_count)
+#     alignment_label = health_score_service.map_alignment(alignment, review_count)
 #     confidence_label = health_score_service.map_confidence(confidence, review_count)
 
 #     # return detailed health response with all signals and labels for transparency and debugging
@@ -135,7 +135,7 @@
 #         consistency=consistency,
 #         confidence=confidence,
 #         health_label=health_label,
-#         consistency_label=consistency_label,
+#         alignment_label=alignment_label,
 #         confidence_label=confidence_label
 #     )
 

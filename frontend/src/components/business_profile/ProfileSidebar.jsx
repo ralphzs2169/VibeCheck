@@ -78,6 +78,7 @@ function ProfileSidebar({ business, latestVibe, getVibeLabel }) {
             <VibeScoreGauge
               score={vibeScore}
               label={getVibeLabel(vibeScore)}
+              reviewCount={latestVibe?.review_count || 0}
               positive={latestVibe?.positive_count || 0}
               neutral={latestVibe?.mixed_count || 0}
               negative={latestVibe?.negative_count || 0}

@@ -1,16 +1,14 @@
 import { useEffect, useState } from "react";
-import { getDashboard, getAnalytics } from "../../services/api";
+import { getAnalytics } from "../../services/api";
 
 import HealthDiagnostic from "../../components/analytics/HealthDiagnostic";
 import ExecutiveSummary from "../../components/analytics/ExecutiveSummary";
 import PrimaryRiskDriver from "../../components/dashboard/PrimaryRiskDriver";
 import NegativeSignals from "../../components/dashboard/NegativeSignals";
 import PositiveDrivers from "../../components/dashboard/PositiveDrivers";
-import AspectIntelligenceGrid from "../../components/dashboard/AspectIntelligenceGrid";
 import FrequentAspectAnalysis from "../../components/dashboard/FrequentAspectAnalysis";
-import ReviewEventDetectionCard from "../../components/dashboard/ReviewEventDetectionCard";
-import PeakDropAnalysisCard from "../../components/dashboard/PeakDropAnalysisCard";
-import BusinessStabilityCard from "../../components/dashboard/BusinessStabilityCard";
+import AspectAnalytics from "../../components/dashboard/AspectAnalytics";
+import VibeHeatmap from "../../components/dashboard/VibeHeatmap";
 
 function BusinessAnalytics() {
     const [business, setBusiness] = useState(null);
@@ -47,62 +45,46 @@ function BusinessAnalytics() {
     return (
         <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
 
-            {/* HEADER */}
-            <div>
-                <h1 className="text-3xl font-bold text-gray-900">
-                    Business Analytics
-                </h1>
-                <p className="mt-2 text-gray-600">
-                    View analytics and insights for your business.
-                </p>
-            </div>
-
-            {/* EXECUTIVE SUMMARY */}
+            {/* Executive Summary */}
             <ExecutiveSummary dashboard={business || {}} loading={loading} />
 
-            {/* TOP: HEALTH */}
-            <HealthDiagnostic data={business?.business_health || {}} />
+            {/* TOP ANALYTICS ROW */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <FrequentAspectAnalysis data={business?.aspect_frequency || {}} />
 
-            {/* MIDDLE GRID: CORE DRIVERS */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <PrimaryRiskDriver
-                    data={business?.primary_risk_driver || {}}
-                />
-
-                <NegativeSignals
-                    data={business?.negative_signals || {}}
-                />
-
-                <PositiveDrivers
-                    data={business?.positive_drivers || {}}
+                <VibeHeatmap
+                    data={business?.vibe_score_daily || {}}
+                    vibeOverTime={business?.vibe_score_daily || {}}
+                    embedded
                 />
             </div>
 
-            {/* FREQUENT ASPECT ANALYSIS */}
-            <FrequentAspectAnalysis
-                data={business?.frequent_aspect_mining || {}}
-            />
+            {/* CORE INSIGHTS */}
+            <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6">
 
-            {/* REVIEW EVENT DETECTION */}
-            <ReviewEventDetectionCard
-                data={business?.review_event_detection || {}}
-            />
+                <AspectAnalytics
+                    aspects={business?.aspects || {}}
+                    onViewAll={() => {}}
+                    compact={false}
+                />
 
-            {/* PEAK & DROP ANALYSIS */}
-            <PeakDropAnalysisCard
-                data={business?.peak_and_drop || {}}
-            />
+                <div className="flex flex-col gap-6">
 
-            {/* BUSINESS STABILITY */}
-            <BusinessStabilityCard
-                vibe={business?.vibe_volatility || {}}
-                sentiment={business?.sentiment_volatility || {}}
-            />
+                    <PrimaryRiskDriver data={business?.primary_risk_driver || {}} />
 
-            {/* ASPECT INTELLIGENCE */}
-            <AspectIntelligenceGrid
-                data={business?.aspect_intelligence || []}
-            />
+                    <PositiveDrivers data={business?.positive_drivers || {}} />
+
+                </div>
+            </div>
+
+            {/* DIAGNOSIS LAYER (FIXED) */}
+           <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-6">
+
+                <NegativeSignals data={business?.negative_signals || {}} />
+
+                <HealthDiagnostic data={business?.business_health || {}} />
+
+            </div>
 
         </div>
     );

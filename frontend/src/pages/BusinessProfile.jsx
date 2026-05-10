@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 
 import WaveBackground from '../components/WaveBackground';
@@ -46,10 +47,11 @@ export default function BusinessProfile() {
 
   // Prevent background scrolling while inside profile page
   useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
     return () => {
-      document.body.style.overflow = '';
+      document.body.style.overflow = originalOverflow;
     };
   }, []);
 
@@ -112,6 +114,15 @@ export default function BusinessProfile() {
   return (
     <div className="min-h-[calc(100vh-64px)] bg-gray-50 relative overflow-hidden">
       <WaveBackground />
+
+      <button
+        onClick={() => navigate(-1)}
+        className="absolute top-6 left-6 z-20 p-2 rounded-full bg-white shadow-md hover:shadow-lg hover:bg-gray-50 transition-all"
+        title="Go back"
+        aria-label="Go back"
+      >
+        <ArrowLeft className="w-5 h-5 text-[#004687]" />
+      </button>
 
       <div className="relative z-10 h-[calc(100vh-64px)] flex">
         <ProfileSidebar
