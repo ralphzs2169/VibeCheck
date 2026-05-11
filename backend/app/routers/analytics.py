@@ -18,7 +18,10 @@ from backend.app.services.analytics.sentiment_analytics import get_sentiment_vol
 from backend.app.services.analytics.vibe_analytics import (
     get_latest_vibe,
     get_vibe_score_trend,
-    get_vibe_score_over_time
+    get_vibe_score_over_time,
+    get_vibe_volatility,
+    forecast_vibe_score,
+    get_peak_and_drop,
 )
 
 from backend.app.services.analytics.review_analytics import (
@@ -60,6 +63,9 @@ async def get_analytics(
 
     # (CARD 2) Feedback Consisteny
     sentiment_volatility = await get_sentiment_volatility(db, business_id)
+
+    # (CARD 2b) Vibe volatility for consistency / signal stability
+    vibe_volatility = await get_vibe_volatility(db, business_id)
 
     # (CARD 3) Vibe Trend Direction (improving, declining, stable)
     vibe_score_trend = await get_vibe_score_trend(db, business_id)
@@ -120,7 +126,19 @@ async def get_analytics(
     # Negative Signals Insight
     # ================================
     review_activity = await get_review_activity(db, business_id)
-    review_velocity = await get_review_velocity(db, business_id)
+    try:
+        review_velocity = await get_review_velocity(db, business_id)
+    except AttributeError:
+        review_velocity = {
+            "status": "insufficient_data",
+            "window_days": 30,
+            "recent_count": 0,
+            "previous_count": 0,
+            "recent_per_week": 0.0,
+            "previous_per_week": 0.0,
+            "change_pct": None,
+            "meta": {"is_reliable": False, "sample_size": 0, "min_required": 5},
+        }
     negative_signals = insights_service.get_negative_signals(
         aspect_summary=aspect_summary["summary"],
         aspect_trends=aspect_trends["trends"],
@@ -156,6 +174,7 @@ async def get_analytics(
         "vibe_score_weekly": vibe_score_weekly,    # for weekly trends
         "vibe_score_monthly": vibe_score_monthly,  # for monthly trends
         "sentiment_volatility": sentiment_volatility,
+        "vibe_volatility": vibe_volatility,
         "review_velocity": review_velocity,
 
         "aspects": aspects,

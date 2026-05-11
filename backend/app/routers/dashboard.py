@@ -83,9 +83,9 @@ async def get_dashboard(
     # Top Performing ASPECT is derived from get_positive_drivers which takes into account both the aspect summary
     #  and trends, as well as review volume, to identify which aspect is currently the strongest driver of positive sentiment for the business
     positive_drivers = get_positive_drivers(
-        aspect_summary=aspect_summary["summary"],
-        aspect_trends=aspect_trends["trends"],
-        review_count=review_count,
+        aspect_summary["summary"],
+        aspect_trends["trends"],
+        review_count,
     )
 
     # ======================================
