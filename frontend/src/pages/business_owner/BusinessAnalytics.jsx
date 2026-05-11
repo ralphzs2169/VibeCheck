@@ -29,6 +29,15 @@ function BusinessAnalytics() {
         fetchData();
     }, []);
 
+    // Ensure analytics page scrolls to top on mount
+    useEffect(() => {
+        try {
+            window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+        } catch (e) {
+            // noop for non-browser environments
+        }
+    }, []);
+
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">

@@ -33,6 +33,15 @@ function BusinessReviews() {
         fetchData();
     }, []);
 
+    // Ensure reviews page starts at the top when navigated to
+    useEffect(() => {
+        try {
+            window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+        } catch (e) {
+            // noop in non-browser contexts
+        }
+    }, []);
+
     // Derived data and memoized computations (must run before any early returns)
     const reviews = business?.all_reviews || business?.latest_reviews || [];
 

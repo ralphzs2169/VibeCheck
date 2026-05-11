@@ -36,6 +36,15 @@ function BusinessDashboard() {
         fetchData();
     }, []);
 
+    // Ensure the dashboard starts scrolled to top when navigated to
+    useEffect(() => {
+        try {
+            window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+        } catch (e) {
+            // no-op in non-browser environments
+        }
+    }, []);
+
       if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">

@@ -50,7 +50,14 @@ async def create_review(db: AsyncSession, review: ReviewCreate,  user_id: int, m
 
 
 async def get_review_or_404(db: AsyncSession, review_id: int) -> Review:
-    result = await db.execute(select(Review).where(Review.id == review_id))
+    result = await db.execute(
+        select(Review)
+        .where(Review.id == review_id)
+        .options(
+            selectinload(Review.user),
+            selectinload(Review.aspect_sentiments),
+        )
+    )
     review = result.scalars().first()
 
     if not review:
@@ -62,7 +69,12 @@ async def get_review_or_404(db: AsyncSession, review_id: int) -> Review:
 
 
 async def get_all_reviews(db: AsyncSession):
-    result = await db.execute(select(Review))
+    result = await db.execute(
+        select(Review).options(
+            selectinload(Review.user),
+            selectinload(Review.aspect_sentiments),
+        )
+    )
     return result.scalars().all()
 
 

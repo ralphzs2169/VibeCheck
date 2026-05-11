@@ -1,3 +1,13 @@
+# This module contains functions to analyze vibe scores for businesses, including:
+# Retrieving latest vibe snapshot
+#   - (A vibe snapshot is a summary of the overall vibe of a business 
+#   - based on its reviews at a specific point in time)
+# Calculating vibe score volatility 
+# Generating vibe score time series 
+# Identifying peaks and drops in vibe scores
+# Calculating vibe score trend using linear regression slope
+# Forecasting future vibe scores using linear regression on historical data
+
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from sqlalchemy import func, select
@@ -21,6 +31,10 @@ from backend.app.services.mapper_service import map_peak_drop_event, map_stabili
 
 
 async def get_latest_vibe(db: AsyncSession, business_id: int):
+    """
+    Retrieve the latest vibe snapshot for a given business.
+    """
+    # Query to get the most recent vibe snapshot for the business
     stmt = (
         select(VibeSnapshot)
         .where(VibeSnapshot.business_id == business_id)
@@ -40,6 +54,7 @@ async def get_latest_vibe(db: AsyncSession, business_id: int):
         "reviews_analyzed": row.review_count,
         "date": row.snapshot_date
     }
+
 
 async def get_vibe_volatility(db: AsyncSession, business_id: int):
     """
@@ -90,6 +105,10 @@ async def get_vibe_volatility(db: AsyncSession, business_id: int):
 
 
 async def get_vibe_score_time_series(db: AsyncSession, business_id: int, granularity: str):
+    """
+    Retrieves vibe score time series for a business, 
+    aggregated by the specified granularity (daily, weekly, monthly).
+    """
     if granularity == "daily":
         bucket = func.date(VibeSnapshot.snapshot_date)
     elif granularity == "weekly":
@@ -99,6 +118,8 @@ async def get_vibe_score_time_series(db: AsyncSession, business_id: int, granula
     else:
         raise ValueError("Invalid granularity")
 
+    # query to aggregate vibe scores by time bucket and calculate
+    # average score and snapshot count for each period
     stmt = (
         select(
             bucket.label("period"),
@@ -122,6 +143,7 @@ async def get_vibe_score_time_series(db: AsyncSession, business_id: int, granula
         for r in rows
     ]
 
+
 async def get_vibe_score_over_time(db, business_id, granularity):
     data = await get_vibe_score_time_series(db, business_id, granularity)
 
@@ -132,6 +154,11 @@ async def get_vibe_score_over_time(db, business_id, granularity):
 
 
 async def get_peak_and_drop(db: AsyncSession, business_id: int):
+    """
+    Identifies the biggest peak and drop in vibe scores over time.
+     - Peak: largest positive change between consecutive time periods
+     - Drop: largest negative change between consecutive time periods
+    """
     rows = await get_vibe_score_time_series(db, business_id, "daily")
 
     if len(rows) < MIN_PEAK_DROP_POINTS:
@@ -143,6 +170,7 @@ async def get_peak_and_drop(db: AsyncSession, business_id: int):
 
     diffs = []
 
+    # Calculate changes between consecutive periods to identify peaks and drops
     for i in range(1, len(rows)):
         prev_score = float(rows[i - 1]["avg_score"] or 0)
         curr_score = float(rows[i]["avg_score"] or 0)
@@ -233,9 +261,7 @@ async def forecast_vibe_score(db: AsyncSession, business_id: int):
     - predicted vibe classification
     """
 
-    # -------------------------
-    # FETCH HISTORICAL DATA
-    # -------------------------
+    # Get historical monthly vibe scores
     response = await get_vibe_score_over_time(
         db,
         business_id,
@@ -244,9 +270,6 @@ async def forecast_vibe_score(db: AsyncSession, business_id: int):
 
     data = response.get("data", [])
 
-    # -------------------------
-    # VALIDATION
-    # -------------------------
     if len(data) < MIN_VIBE_FORECAST_POINTS:
         return {
             "status": "insufficient_data",
@@ -258,9 +281,7 @@ async def forecast_vibe_score(db: AsyncSession, business_id: int):
             )
         }
 
-    # -------------------------
-    # PREPARE TRAINING DATA
-    # -------------------------
+    # Prepare data for regression - use index as x and avg_score as y
     y = np.array([
         item["avg_score"]
         for item in data
@@ -268,15 +289,11 @@ async def forecast_vibe_score(db: AsyncSession, business_id: int):
 
     x = np.arange(len(y)).reshape(-1, 1)
 
-    # -------------------------
-    # TRAIN MODEL
-    # -------------------------
+    # Fit linear regression model to historical data
     model = LinearRegression()
     model.fit(x, y)
 
-    # -------------------------
-    # FORECAST FUTURE MONTHS
-    # -------------------------
+    # Forecast future vibe scores for the next 6 months
     future_x = np.arange(
         len(y),
         len(y) + FUTURE_FORECAST_MONTHS
@@ -291,9 +308,7 @@ async def forecast_vibe_score(db: AsyncSession, business_id: int):
         MAX_VIBE_SCORE
     )
 
-    # -------------------------
-    # FORMAT FORECAST
-    # -------------------------
+    
     forecast = [
         {
             "period": len(y) + i,
@@ -302,16 +317,10 @@ async def forecast_vibe_score(db: AsyncSession, business_id: int):
         for i, score in enumerate(future_y)
     ]
 
-    # -------------------------
-    # FINAL FORECAST VALUE
-    # -------------------------
     final_prediction = float(future_y[-1])
 
     predicted_vibe = map_vibe_score(final_prediction)
 
-    # -------------------------
-    # RETURN
-    # -------------------------
     return {
         "history": data,
         "forecast": forecast,

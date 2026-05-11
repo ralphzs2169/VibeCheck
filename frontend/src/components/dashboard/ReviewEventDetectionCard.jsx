@@ -8,6 +8,7 @@ import {
     TrendingUp,
     MessageCircle
 } from "lucide-react";
+import ReliabilityFooter from "../ReliabilityFooter";
 
 const URGENCY_BADGE = {
     low: {
@@ -97,6 +98,7 @@ export default function ReviewEventDetectionCard({ data }) {
     const InsightIcon = insightStyle.Icon;
 
     const z = data?.z_scores || {};
+    const reliability = data.meta
 
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
@@ -144,6 +146,7 @@ export default function ReviewEventDetectionCard({ data }) {
                     </p>
                 </div>
             )}
+            {/* <   ReliabilityFooter isReliable={reliability?.is_reliable} sampleSize={reliability?.sample_size} />   */}
         </div>
     );
 }

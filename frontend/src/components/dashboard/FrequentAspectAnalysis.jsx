@@ -44,7 +44,7 @@ function FrequentAspectAnalysis({ data = {} }) {
                 <div className="flex items-center gap-2 mb-1">
                     <Tag className="w-4 h-4 text-gray-600" />
                     <h2 className="text-lg font-semibold text-gray-900">
-                        Frequent Aspect Analysis
+                        Top Mentioned Aspects
                     </h2>
                 </div>
 
@@ -76,7 +76,7 @@ function FrequentAspectAnalysis({ data = {} }) {
                     <div className="flex items-center gap-2 mb-1">
                         <Tag className="w-4 h-4 text-gray-600" />
                         <h2 className="text-lg font-semibold text-gray-900">
-                            Frequent Aspect Analysis
+                            Top Mentioned Aspects
                         </h2>
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5">

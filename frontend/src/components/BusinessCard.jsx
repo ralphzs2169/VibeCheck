@@ -1,13 +1,15 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, MapPin } from 'lucide-react';
 import { BASE_URL } from '../services/api';
 import ImagePlaceholder from './icons/ImagePlaceholder';
 import getVibeLevelFromScore from '../utils/vibeLabel';
 
-function BusinessCard({ business, vibeData }) {
+function BusinessCard({ business, vibeData, loading = false }) {
 
   const navigate = useNavigate();
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
   
 
   const handleViewInsights = () => {
@@ -20,6 +22,19 @@ function BusinessCard({ business, vibeData }) {
   const isNew = reviewCount < 10;
 
 
+  if (loading) {
+    return (
+      <div className="bg-white border border-[#E2E8F0] rounded-xs shadow-sm overflow-hidden animate-pulse">
+        <div className="w-full h-56 md:h-48 lg:h-56 xl:h-64 bg-slate-100" />
+        <div className="p-5">
+          <div className="h-4 bg-slate-100 rounded w-3/4 mb-3" />
+          <div className="h-3 bg-slate-100 rounded w-1/2 mb-6" />
+          <div className="h-3 bg-slate-100 rounded w-1/3" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       onClick={handleViewInsights}
@@ -29,45 +44,59 @@ function BusinessCard({ business, vibeData }) {
       
       {/* Image Container */}
       <div className="relative overflow-hidden rounded-t-xs">
-        <div className="w-full h-56 md:h-48 lg:h-56 xl:h-64">
-        {business.image_path ? (
-          <img
-            src={`${BASE_URL}${business.image_path}`}
-            alt={business.name}
-            loading="lazy"
-            decoding="async"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-        ) : (
-          <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-            <ImagePlaceholder className="w-16 h-16 text-gray-400" />
-          </div>
-        )}
+        <div className="w-full h-56 md:h-48 lg:h-56 xl:h-64 bg-gray-100">
+          {business.image_path && !imageError ? (
+            <>
+              <img
+                src={`${BASE_URL}${business.image_path}`}
+                alt={business.name}
+                loading="lazy"
+                decoding="async"
+                fetchPriority="low"
+                onLoad={() => setImageLoaded(true)}
+                onError={() => {
+                  setImageError(true);
+                  setImageLoaded(true);
+                }}
+                className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 transition-opacity duration-300 ${imageLoaded ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'}`}
+                aria-busy={!imageLoaded}
+              />
 
-        {/* Top-right score pill */}
-        <div className="absolute top-3 right-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm text-[#0F172A] text-sm font-semibold">
-            <Sparkles className="w-4 h-4 text-[#0F172A]" />
-            <span>{vibeScore ? vibeScore.toFixed(1) : '—'}</span>
-          </div>
-        </div>
-
-        {/* Bottom-left status tag */}
-        <div className="absolute left-3 bottom-3">
-          {isNew ? (
-            <div className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-500 text-white">
-              New
-            </div>
+              {!imageLoaded && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                  <div className="w-10 h-10 rounded-full border-4 border-gray-200 border-t-[#004687] animate-spin" />
+                </div>
+              )}
+            </>
           ) : (
-            <div className={`px-3 py-1 rounded-full text-xs font-semibold ${getThemeClasses(vibeLevelData.theme)}`}>
-              {vibeLevelData.label}
+            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+              <ImagePlaceholder className="w-16 h-16 text-gray-400" />
             </div>
           )}
+
+          {/* Top-right score pill */}
+          <div className="absolute top-3 right-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm text-[#0F172A] text-sm font-semibold">
+              <Sparkles className="w-4 h-4 text-[#0F172A]" />
+              <span>{vibeScore ? vibeScore.toFixed(1) : '—'}</span>
+            </div>
+          </div>
+
+          {/* Bottom-left status tag */}
+          <div className="absolute left-3 bottom-3">
+            {isNew ? (
+              <div className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-500 text-white">
+                New
+              </div>
+            ) : (
+              <div className={`px-3 py-1 rounded-full text-xs font-semibold ${getThemeClasses(vibeLevelData.theme)}`}>
+                {vibeLevelData.label}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-
       {/* Content Container */}
-      </div>
       <div className="p-5">
         {/* Location Row */}
         <div className="flex items-center gap-2 text-sm text-slate-500 mb-2">

@@ -36,6 +36,15 @@ function BusinessProfileManagement() {
         fetchData();
     }, []);
 
+    // Ensure profile management page starts at top when opened
+    useEffect(() => {
+        try {
+            window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+        } catch (e) {
+            // noop in server/non-browser env
+        }
+    }, []);
+
     useEffect(() => {
         if (selectedImage) {
             const previewUrl = URL.createObjectURL(selectedImage);
@@ -144,17 +153,12 @@ function BusinessProfileManagement() {
             )}
 
             <div className="max-w-7xl mx-auto space-y-6">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Profile Management</h1>
-                    <p className="mt-2 text-sm text-gray-600">
-                        Update the information customers see on your business profile.
-                    </p>
-                </div>
+          
 
                 <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
                     <div className="mb-6 flex items-center justify-between gap-4">
                         <div>
-                            <h2 className="text-lg font-semibold text-gray-900">Business Details</h2>
+                            <h2 className="text-lg font-semibold text-gray-900">Your Business Details</h2>
                             <p className="text-sm text-gray-500 mt-1">Keep your profile current and consistent.</p>
                         </div>
                     </div>

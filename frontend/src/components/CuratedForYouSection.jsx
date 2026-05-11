@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import BusinessCard from "./BusinessCard";
 
+import { Link } from "react-router-dom";
 export default function ExploreResortsSection({
   businesses = [],
   vibeDataMap = {},
@@ -55,6 +56,12 @@ export default function ExploreResortsSection({
         ) : error ? (
           <div className="rounded-2xl border border-red-100 bg-red-50 text-red-700 px-5 py-4">
             {error}
+          </div>
+        ) : sortedBusinesses.length === 0 ? (
+          <div className="rounded-2xl border border-gray-200 p-8 text-center">
+            <h3 className="text-lg font-semibold text-[#0F172A] mb-2">Nothing to show</h3>
+            <p className="text-gray-500 mb-4">We couldn't find resorts matching your criteria right now.</p>
+            <Link to="/businesses" className="inline-flex items-center px-4 py-2 rounded-md bg-[#004687] text-white text-sm">Browse all resorts</Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

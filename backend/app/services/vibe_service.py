@@ -2,7 +2,7 @@
 # based on its reviews, and generates a concise natural-language summary of
 # key insights using keyword extraction and optional LLM enhancement.
 
-from datetime import datetime
+import datetime
 import logging
 
 from sqlalchemy import select
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 async def get_reviews_with_scores(
     db: AsyncSession,
     business_id: int,
-    as_of_date: datetime | None = None # optional parameter to filter reviews up to a certain date for historical vibe snapshots
+    as_of_date: datetime.datetime | None = None # optional parameter to filter reviews up to a certain date for historical vibe snapshots
 ) -> list[tuple]:
     """
     Fetches reviews for a business along with their sentiment scores, optionally filtered by a cutoff date.

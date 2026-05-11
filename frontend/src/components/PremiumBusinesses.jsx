@@ -36,11 +36,19 @@ export default function PremiumBusinesses({ businesses = [], vibeDataMap = {} })
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {top3.map(b => (
-            <BusinessCard key={b.id} business={b} vibeData={vibeDataMap[b.id]} />
-          ))}
-        </div>
+        {top3.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-gray-200 p-8 text-center">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No premium resorts yet</h3>
+            <p className="text-gray-500 mb-4">We don't have featured resorts at the moment. Try exploring all resorts.</p>
+            <Link to="/businesses" className="inline-flex items-center px-4 py-2 rounded-md bg-[#004687] text-white text-sm">Browse all resorts</Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {top3.map(b => (
+              <BusinessCard key={b.id} business={b} vibeData={vibeDataMap[b.id]} />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

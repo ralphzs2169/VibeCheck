@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { Target } from "lucide-react";
+import { Target, ArrowRight } from "lucide-react";
 import {
     ImprovingIcon,
     DecliningIcon,
-    StableIcon,
 } from "../icons/TrendIcons";
 
 const FIXED_ASPECT_ORDER = [
@@ -56,8 +55,8 @@ function formatTrend(trend) {
         default:
             return {
                 label: "Stable",
-                Icon: StableIcon,
-                color: "text-gray-500",
+                Icon: ArrowRight,
+                color: "text-sky-600",
             };
     }
 }
