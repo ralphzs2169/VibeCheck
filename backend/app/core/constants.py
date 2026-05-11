@@ -73,7 +73,7 @@ SIMILARITY_THRESHOLD = 0.35
 
 # used in ABSA to filter out low-confidence sentiment predictions, 
 # which can help improve overall aspect sentiment accuracy
-MIN_SENTIMENT_CONFIDENCE = 0.65 
+MIN_SENTIMENT_CONFIDENCE = 0.6
 
 # minimum number of characters for a clause to be considered valid
 MIN_CLAUSE_LENGTH = 8 

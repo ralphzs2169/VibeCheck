@@ -1,22 +1,52 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import ReviewCard from './ReviewCard';
 import VibeSummaryCard from './VibeSummaryCard';
 
 function ProfileContent({ reviews, latestVibe }) {
   const reviewCount = reviews.length || 0;
-  const [sortOpen, setSortOpen] = useState(false);
-  const [sortLabel, setSortLabel] = useState('Recent');
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [aspectFilter, setAspectFilter] = useState('');
+    const [sortOrder, setSortOrder] = useState('newest');
 
-  const sortOptions = ['Recent', 'Highest Rated', 'Lowest Rated', 'Most Helpful'];
+    const aspectOptions = useMemo(() => {
+        const seen = new Set();
+        const options = [];
+        for (const review of reviews) {
+            for (const aspect of review?.aspect_sentiments || []) {
+                if (!aspect?.aspect || seen.has(aspect.aspect)) continue;
+                seen.add(aspect.aspect);
+                options.push(aspect.aspect);
+            }
+        }
+        return options;
+    }, [reviews]);
 
-  const filteredReviews = reviews.filter((r) =>
-    searchQuery === '' ||
-    r.content?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.user?.firstname?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.user?.lastname?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    const filteredReviews = useMemo(() => {
+        let list = reviews || [];
+
+        if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase();
+            list = list.filter((r) =>
+                (r.content || '').toLowerCase().includes(q) ||
+                (r.user?.firstname || '').toLowerCase().includes(q) ||
+                (r.user?.lastname || '').toLowerCase().includes(q)
+            );
+        }
+
+        if (aspectFilter) {
+            list = list.filter((r) =>
+                (r.aspect_sentiments || []).some((a) => a.aspect === aspectFilter)
+            );
+        }
+
+        list = list.sort((a, b) => {
+            const ta = new Date(a.created_at).getTime();
+            const tb = new Date(b.created_at).getTime();
+            return sortOrder === 'newest' ? tb - ta : ta - tb;
+        });
+
+        return list;
+    }, [reviews, searchQuery, aspectFilter, sortOrder]);
 
   return (
     <main className="flex-1 flex flex-col overflow-hidden w-full h-full">
@@ -38,60 +68,56 @@ function ProfileContent({ reviews, latestVibe }) {
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col flex-1 overflow-hidden">
 
             {/* Header row — stays fixed at top of card */}
-            <div className="flex-shrink-0 flex items-center justify-between px-5 py-4 border-b border-gray-100">
+            <div className="flex-shrink-0 flex flex-col gap-3 px-5 py-4 border-b border-gray-100">
                 <h2 className="text-lg font-bold text-gray-900">
                 Guest Reviews ({reviewCount})
                 </h2>
 
-                <div className="flex items-center gap-2">
-
-                {searchOpen && (
-                    <input
-                    autoFocus
+                <div className="flex flex-wrap items-center gap-2">
+                <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search reviews..."
-                    className="w-48 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#004687]/20 focus:border-[#004687] transition"
-                    />
+                    className="w-full sm:w-64 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#004687]/20 focus:border-[#004687] transition"
+                />
+
+                {aspectOptions.length > 0 && (
+                    <select
+                    value={aspectFilter}
+                    onChange={(e) => setAspectFilter(e.target.value)}
+                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#004687]/20 focus:border-[#004687] transition"
+                    >
+                    <option value="">All aspects</option>
+                    {aspectOptions.map((aspect) => (
+                        <option key={aspect} value={aspect}>
+                        {aspect}
+                        </option>
+                    ))}
+                    </select>
                 )}
 
-                <div className="relative">
-                    <button
-                    onClick={() => { setSortOpen(!sortOpen); setSearchOpen(false); }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                    >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h18M7 8h10M11 12h4" />
-                    </svg>
-                    Sort by: {sortLabel}
-                    </button>
-
-                    {sortOpen && (
-                    <div className="absolute right-0 mt-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
-                        {sortOptions.map((opt) => (
-                        <button
-                            key={opt}
-                            onClick={() => { setSortLabel(opt); setSortOpen(false); }}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition ${sortLabel === opt ? 'text-[#004687] font-medium' : 'text-gray-700'}`}
-                        >
-                            {opt}
-                        </button>
-                        ))}
-                    </div>
-                    )}
-                </div>
-
-                <button
-                    onClick={() => { setSearchOpen(!searchOpen); setSortOpen(false); if (searchOpen) setSearchQuery(''); }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 text-sm border rounded-lg transition ${searchOpen ? 'bg-[#004687] text-white border-[#004687]' : 'text-gray-600 border-gray-300 hover:bg-gray-50'}`}
+                <select
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value)}
+                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#004687]/20 focus:border-[#004687] transition"
                 >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-                    </svg>
-                    Search
-                </button>
+                    <option value="newest">Newest</option>
+                    <option value="oldest">Oldest</option>
+                </select>
 
+                {(searchQuery || aspectFilter) && (
+                    <button
+                    onClick={() => {
+                        setSearchQuery('');
+                        setAspectFilter('');
+                        setSortOrder('newest');
+                    }}
+                    className="text-sm text-[#004687] font-medium hover:underline"
+                    >
+                    Clear
+                    </button>
+                )}
                 </div>
             </div>
 

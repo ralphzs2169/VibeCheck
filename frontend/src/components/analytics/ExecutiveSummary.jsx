@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { TrendingUp, TrendingDown, Minus, Zap, ShieldCheck, BarChart2, Activity } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Zap, ShieldCheck, BarChart2 } from "lucide-react";
 
 const BRAND = "#004687";
 
@@ -78,28 +77,19 @@ export default function ExecutiveSummary({ dashboard = {}, loading = false }) {
 
   if (loading) return <Skeleton />;
 
-  const bh           = dashboard.business_health ?? {};
-  const bhRaw        = bh.raw ?? {};
-  const sentimentVol = dashboard.sentiment_volatility ?? {};
-  const vibeVol      = dashboard.vibe_volatility ?? {};
-  const reviewCount  = Number(dashboard.review_count ?? 0);
-
-  const hasEnoughData = (metric) => {
-    const meta = metric?.meta;
-    if (!meta) return true; // assume enough if no meta present
-    const sample = Number(meta.sample_size ?? 0);
-    const minReq = Number(meta.min_required ?? 0);
-    return sample >= minReq;
-  };
+  const businessHealth = dashboard.business_health ?? {};
+  const businessHealthRaw = businessHealth.raw ?? {};
+  const sentimentVolatility = dashboard.sentiment_volatility ?? {};
+  const vibeVolatility = dashboard.vibe_volatility ?? {};
 
   /* ── derived values ── */
-  const trendLabel   = bhRaw.trend_label ?? "stable";
-  const trend        = humanTrend(trendLabel);
-  const TrendIcon    = trend.icon;
+  const trendLabel = businessHealthRaw.trend_label ?? "stable";
+  const trendStatus = humanTrend(trendLabel);
+  const TrendStatusIcon = trendStatus.icon;
 
-  const vol          = humanVolatility(vibeVol.stability ?? sentimentVol.stability, vibeVol.volatility ?? sentimentVol.volatility);
-  const dq           = humanDataQuality(bhRaw.data_quality);
-  const cs           = humanColdStart(bhRaw.is_cold_start);
+  const consistencyStatus = humanVolatility(sentimentVolatility.stability, sentimentVolatility.volatility);
+  const dataQualityStatus = humanDataQuality(businessHealthRaw.data_quality);
+  const maturityStatus = humanColdStart(businessHealthRaw.is_cold_start);
 
   return (
     <div className="space-y-3">
@@ -114,31 +104,31 @@ export default function ExecutiveSummary({ dashboard = {}, loading = false }) {
         <ContextTile
           icon={BarChart2}
           label="Signal Strength"
-          value={dq.label}
-          valueColor={dq.color}
-          sub={dq.sub}
-          bottom={<AnimatedBar pct={dq.pct} colorClass="bg-[#004687]" delay={0} />}
+          value={dataQualityStatus.label}
+          valueColor={dataQualityStatus.color}
+          sub={dataQualityStatus.sub}
+          bottom={<AnimatedBar pct={dataQualityStatus.pct} colorClass="bg-[#004687]" delay={0} />}
           delay={80}
         />
 
         {/* 2 — Temporal vibe stability */}
         <ContextTile
           icon={Zap}
-          label="Review Consistency"
-          value={vol.label}
-          valueColor={vol.color}
-          sub={vol.sub}
+          label="Feedback Consistency"
+          value={consistencyStatus.label}
+          valueColor={consistencyStatus.color}
+          sub={consistencyStatus.sub}
           delay={160}
         />
 
         {/* 3 — Trend direction */}
         <ContextTile
-          icon={TrendIcon}
-          iconColor={trend.iconColor}
+          icon={TrendStatusIcon}
+          iconColor={trendStatus.iconColor}
           label="Vibe Trend Direction"
-          value={trend.label}
-          valueColor={trend.color}
-          sub={trend.sub}
+          value={trendStatus.label}
+          valueColor={trendStatus.color}
+          sub={trendStatus.sub}
           delay={240}
         />
 
@@ -146,9 +136,9 @@ export default function ExecutiveSummary({ dashboard = {}, loading = false }) {
         <ContextTile
           icon={ShieldCheck}
           label="Data Maturity"
-          value={cs.label}
-          valueColor={cs.color}
-          sub={cs.sub}
+          value={maturityStatus.label}
+          valueColor={maturityStatus.color}
+          sub={maturityStatus.sub}
           delay={320}
         />
 

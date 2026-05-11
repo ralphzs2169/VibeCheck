@@ -67,40 +67,26 @@ async def get_dashboard(
 
     profile = await business_service.get_business_by_id(db, business_id)
 
+    # ===================
     # Card Metrics
+    # ===================
+    # (CARD 1) Vibe Score with trend (stable, improving or declining)
     latest_vibe = await get_latest_vibe(db, business_id)
     vibe_score_trend = await get_vibe_score_trend(db, business_id)
+    
+    # (CARD 2) Review Count
+    review_count = await business_service.get_business_review_count(db, business_id)
 
-    # Vibe Score Over Time for Chart
-    vibe_score_daily = await get_vibe_score_over_time(db, business_id, "daily")
-    vibe_score_weekly = await get_vibe_score_over_time(db, business_id, "weekly")
-    vibe_score_monthly = await get_vibe_score_over_time(db, business_id, "monthly")
-    peak_and_drop = await get_peak_and_drop(db, business_id)
-
-    # Aspect Analytics Summary and Trends
+    # (CARD 3) Top Performing Aspect 
     aspect_summary = await get_aspect_summary(db, business_id)
     aspect_trends = await get_aspect_trends(db, business_id)
-    aspect_frequency = await get_aspect_frequency(
-        db=db,
-        business_id=business_id,
-        aspects=aspect_summary,
-    )
+    # Top Performing ASPECT is derived from get_positive_drivers which takes into account both the aspect summary
+    #  and trends, as well as review volume, to identify which aspect is currently the strongest driver of positive sentiment for the business
+    positive_drivers = get_positive_drivers(aspect_summary, aspect_trends, review_count)
 
-    # Sentiment Analytics
-    sentiment_over_time = await get_sentiment_over_time(db, business_id, "daily")
-    sentiment_distribution = await get_sentiment_distribution(db, business_id)
-
-    review_activity = await get_review_activity(db, business_id)
-
-
-    # derive UI label and type for vibe card based on latest vibe label
-    label = latest_vibe.get("vibe_label") if latest_vibe else None
-    label_key = label.lower() if label else None
-
-    review_count = await business_service.get_business_review_count(db, business_id)
-    latest_reviews = await review_service.get_latest_reviews_for_business(db, business_id, limit=5)
-
-    # Compute overall business health score based on vibe score, trend, aspect summary, and review count
+    # ======================================
+    # Business Health Gauge or Compass ba ron
+    # ======================================
     business_health = await compute_business_health(
         vibe_score=latest_vibe.get("vibe_score", 0),
         trend=vibe_score_trend.get("trend", "stable"),
@@ -108,17 +94,68 @@ async def get_dashboard(
         review_count=review_count
     )
 
-    positive_drivers = get_positive_drivers(aspect_summary["summary"], aspect_trends["trends"], review_count)
+    # =====================================
+    # Review Activity
+    # =====================================
+    # Detect if there are any significant changes in review volume or sentiment in the last 7 days 
+    # compared to the previous period, which could indicate a PR crisis or viral growth
+    review_activity = await get_review_activity(db, business_id)
+
+
+    # ====================================================================
+    # Vibe Performance Over Time Line Chart with Peak and Drop Annotations
+    # ====================================================================
+    # filter by daily, weekly and monthly
+    vibe_score_daily = await get_vibe_score_over_time(db, business_id, "daily")
+    vibe_score_weekly = await get_vibe_score_over_time(db, business_id, "weekly")
+    vibe_score_monthly = await get_vibe_score_over_time(db, business_id, "monthly")
+
+    # Peak - Strongest Positive Change in Vibe Score
+    # Drop - Strongest Negative Change in Vibe Score
+    peak_and_drop = await get_peak_and_drop(db, business_id)
+
+    # =====================================
+    # Aspect Frequency Share Pie Chart
+    # =====================================
+    aspect_frequency = await get_aspect_frequency(
+        db=db,
+        business_id=business_id,
+        aspects=aspect_summary,
+    )
+
+    # ====================================
+    # Sentiment Distribution Pie Chart
+    # =====================================
+    sentiment_distribution = await get_sentiment_distribution(db, business_id)
+
+    # =====================================
+    # Sentiment Over Time Line Chart
+    # =====================================
+    sentiment_over_time = await get_sentiment_over_time(db, business_id, "daily")
+
+    # =====================================
+    # Vibe Score Forecast with Line Chart
+    # =====================================
     forecast_vibe =  await forecast_vibe_score(db, business_id)
+
+    # ===========================
+    # Latest Reviews 
+    # ===========================
+    latest_reviews = await review_service.get_latest_reviews_for_business(db, business_id, limit=5)
+    
+    
+    # Dont mind the vibe_ui mapping - this is just to derive the appropriate UI label and color for the vibe card
+    # derive UI label and type for vibe card based on latest vibe label
+    label = latest_vibe.get("vibe_label") if latest_vibe else None
+    label_key = label.lower() if label else None
 
     return {
 
         "profile": profile,
         "business_health": business_health,
         "review_count": review_count,
-
+         
         "positive_drivers": positive_drivers,
-
         "vibe": latest_vibe,
         "vibe_ui": VIBE_UI_MAP.get(label_key),
         "vibe_score_trend": vibe_score_trend,
@@ -139,20 +176,6 @@ async def get_dashboard(
             "90D": vibe_score_monthly["data"],
         },
 
-
-        # ASPECTS (AspectAnalytics)
-        "aspects": [
-            {
-                "name": k,
-                "score": v["avg_score"],
-                "label": v["label"],
-
-                # include time-series trend for each aspect
-                "trend": aspect_trends["trends"].get(k, {}).get("trend", "stable"),
-                "change": aspect_trends["trends"].get(k, {}).get("change", 0),
-            }
-            for k, v in aspect_summary["summary"].items()
-        ],
         "latest_reviews":  latest_reviews,
         "aspect_frequency": aspect_frequency
     }

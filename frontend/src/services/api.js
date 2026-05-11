@@ -15,6 +15,14 @@ export const getDashboard = async () => {
   return response.data;
 };
 
+export const getBusinessReviewsPage = async () => {
+  const token = localStorage.getItem("token");
+  const response = await axios.get(`/api/business/reviews`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data;
+};
+
 export const getAnalytics = async () => {
   const token = localStorage.getItem("token");
   const response = await axios.get(`/api/business/analytics`, {

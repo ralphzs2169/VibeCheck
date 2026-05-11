@@ -1,3 +1,6 @@
+# Main application entry point for the VibeCheck backend API.
+# This file initializes the FastAPI app, sets up database connections, loads ML models, and defines the API routes.
+
 # Activate: .\.venv\Scripts\Activate.ps1
 import logging
 import os
@@ -22,6 +25,7 @@ from backend.app.routers import (
     businesses,
     homepage,
     reviews,
+    reviews_page,
     users,
     vibe_snapshots,
     dashboard
@@ -42,10 +46,11 @@ logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
 logging.getLogger("transformers").setLevel(logging.WARNING)
 
 
-
-# lifespan function to handle startup and shutdown events
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """
+    Application lifespan context manager for startup and shutdown events.
+    """
 
     load_dotenv()
     hf_token = os.getenv("HF_TOKEN")
@@ -123,6 +128,7 @@ app.include_router(dashboard.router, prefix="/api/business/dashboard", tags=["da
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(reviews.router, prefix="/api/reviews", tags=["reviews"])
+app.include_router(reviews_page.router, prefix="/api/business/reviews", tags=["business_reviews"])
 app.include_router(businesses.router, prefix="/api/businesses", tags=["businesses"])
 app.include_router(analytics.router, prefix="/api/business/analytics", tags=["analytics"])
 app.include_router(vibe_snapshots.router, prefix="/api/vibe-snapshots", tags=["vibe_snapshots"])

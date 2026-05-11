@@ -92,6 +92,19 @@ async def get_latest_reviews_for_business(db: AsyncSession, business_id: int, li
     return result.scalars().all()
 
 
+async def get_reviews_for_business(db: AsyncSession, business_id: int) -> list[Review]:
+    result = await db.execute(
+        select(Review)
+        .where(Review.business_id == business_id)
+        .order_by(Review.created_at.desc())
+        .options(
+            selectinload(Review.user),
+            selectinload(Review.aspect_sentiments),
+        )
+    )
+    return result.scalars().all()
+
+
 async def update_review(db: AsyncSession, review_id: int, updated_review):
     review = await get_review_or_404(db, review_id)
 

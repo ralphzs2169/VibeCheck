@@ -1,265 +1,299 @@
 import { useEffect, useMemo, useState } from "react";
-import { getDashboard } from "../../services/api";
-import VibeSummaryCard from "../../components/business_profile/VibeSummaryCard";
+import { getBusinessReviewsPage } from "../../services/api";
 import ReviewCard from "../../components/business_profile/ReviewCard";
-import { Smile, Frown, Search, Filter, SlidersHorizontal } from "lucide-react";
+import {
+  Search,
+  Filter,
+  SlidersHorizontal,
+  ChevronDown,
+  Star,
+  Smile,
+  Frown
+} from "lucide-react";
+import Loader from "../../components/Loader";
+
+// ─── Small helpers ────────────────────────────────────────────────────────────
+
+function KeywordPill({ label, variant }) {
+  const styles =
+    variant === "positive"
+      ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/60"
+      : "bg-red-50 text-red-600 ring-1 ring-red-200/60";
+
+  return (
+    <span
+      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold tracking-wide ${styles}`}
+    >
+      {label}
+    </span>
+  );
+}
+
+function SelectField({ value, onChange, children }) {
+  return (
+    <div className="relative w-full sm:w-auto">
+      <select
+        value={value}
+        onChange={onChange}
+        className="appearance-none w-full bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-[#004687]/20 focus:border-[#004687] transition cursor-pointer"
+      >
+        {children}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 function BusinessReviews() {
-    const [business, setBusiness] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+  const [business, setBusiness] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-    // Filters / search
-    const [query, setQuery] = useState("");
-    const [sentimentFilter, setSentimentFilter] = useState("all");
-    const [ratingMin, setRatingMin] = useState(0);
-    const [ratingMax, setRatingMax] = useState(5);
-    const [aspectFilter, setAspectFilter] = useState("");
-    const [sortOrder, setSortOrder] = useState("newest");
+  const [query, setQuery] = useState("");
+  const [aspectFilter, setAspectFilter] = useState("");
+  const [sortOrder, setSortOrder] = useState("newest");
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const dashboardData = await getDashboard();
-                // getDashboard returns a dashboard object similar to BusinessDashboard
-                setBusiness(dashboardData);
-            } catch (err) {
-                setError(err.message || "Failed to load dashboard");
-            } finally {
-                setLoading(false);
-            }
-        };
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const pageData = await getBusinessReviewsPage();
+        setBusiness(pageData);
+      } catch (err) {
+        setError(err.message || "Failed to load reviews page");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
-        fetchData();
-    }, []);
+  const reviews = business?.reviews || [];
 
-    // Ensure reviews page starts at the top when navigated to
-    useEffect(() => {
-        try {
-            window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-        } catch (e) {
-            // noop in non-browser contexts
-        }
-    }, []);
+  const aspectOptions = useMemo(() => {
+    const seen = new Set();
+    const options = [];
+    for (const review of reviews) {
+      for (const aspect of review?.aspect_sentiments || []) {
+        if (!aspect?.aspect || seen.has(aspect.aspect)) continue;
+        seen.add(aspect.aspect);
+        options.push(aspect.aspect);
+      }
+    }
+    return options;
+  }, [reviews]);
 
-    // Derived data and memoized computations (must run before any early returns)
-    const reviews = business?.all_reviews || business?.latest_reviews || [];
+  const positiveKeywords = useMemo(
+    () =>
+      (business?.positive_keywords || []).map((keyword) => ({
+        term: keyword,
+      })),
+    [business]
+  );
 
-    // Build list of aspect options from available aspect_frequency
-    const aspectOptions = (business?.aspect_frequency?.aspects || []).map(a => a.term);
+  const negativeKeywords = useMemo(
+    () =>
+      (business?.negative_keywords || []).map((keyword) => ({
+        term: keyword,
+      })),
+    [business]
+  );
 
-    // Compute keyword insights
-    const positiveKeywords = useMemo(() => {
-        // Prefer explicit positive drivers if present
-        if (business?.positive_drivers && Array.isArray(business.positive_drivers)) return business.positive_drivers;
-        if (business?.positive_drivers?.driver) return [{ term: business.positive_drivers.driver, score: business.positive_drivers.score }];
-        // fallback to top aspects
-        return (business?.aspect_frequency?.aspects || []).slice(0, 6).map(a => ({ term: a.term, score: a.count }));
-    }, [business]);
+  const filteredReviews = useMemo(() => {
+    let list = reviews || [];
 
-    const negativeKeywords = useMemo(() => {
-        if (business?.negative_drivers && Array.isArray(business.negative_drivers)) return business.negative_drivers;
-        if (business?.negative_drivers?.driver) return [{ term: business.negative_drivers.driver, score: business.negative_drivers.score }];
-        // fallback: empty or lowest-count aspects
-        const aspects = business?.aspect_frequency?.aspects || [];
-        return aspects.slice(-6).reverse().map(a => ({ term: a.term, score: a.count }));
-    }, [business]);
-
-    // Filtered reviews
-    const filteredReviews = useMemo(() => {
-        let list = reviews || [];
-        if (query && query.trim().length > 0) {
-            const q = query.toLowerCase();
-            list = list.filter(r => (
-                (r.content || "").toLowerCase().includes(q) ||
-                (r.user?.firstname || "").toLowerCase().includes(q) ||
-                (r.user?.lastname || "").toLowerCase().includes(q)
-            ));
-        }
-
-        if (sentimentFilter !== "all") {
-            list = list.filter(r => (r.sentiment_label || "neutral").toLowerCase() === sentimentFilter);
-        }
-
-        if (aspectFilter) {
-            list = list.filter(r => (r.aspect_sentiments || []).some(a => a.aspect === aspectFilter));
-        }
-
-        list = list.filter(r => (r.rating || 0) >= ratingMin && (r.rating || 0) <= ratingMax);
-
-        list = list.sort((a, b) => {
-            const ta = new Date(a.created_at).getTime();
-            const tb = new Date(b.created_at).getTime();
-            return sortOrder === "newest" ? tb - ta : ta - tb;
-        });
-
-        return list;
-    }, [reviews, query, sentimentFilter, ratingMin, ratingMax, aspectFilter, sortOrder]);
-
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#004687] mx-auto mb-4" />
-                    <p className="text-gray-600">Loading customer reviews...</p>
-                </div>
-            </div>
-        );
+    if (query.trim()) {
+      const q = query.toLowerCase();
+      list = list.filter(
+        (r) =>
+          (r.content || "").toLowerCase().includes(q) ||
+          (r.user?.firstname || "").toLowerCase().includes(q) ||
+          (r.user?.lastname || "").toLowerCase().includes(q)
+      );
     }
 
-    if (error) return <div className="p-6 text-red-600">Error: {error}</div>;
+    if (aspectFilter) {
+      list = list.filter((r) =>
+        (r.aspect_sentiments || []).some((a) => a.aspect === aspectFilter)
+      );
+    }
 
+    list = list.sort((a, b) => {
+      const ta = new Date(a.created_at).getTime();
+      const tb = new Date(b.created_at).getTime();
+      return sortOrder === "newest" ? tb - ta : ta - tb;
+    });
+
+    return list;
+  }, [reviews, query, aspectFilter, sortOrder]);
+
+  // ── Loading ──
+  if (loading) {
     return (
-        <div className="px-6 py-8">
-            <div className="max-w-7xl mx-auto space-y-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Customer Reviews</h1>
-                        <p className="text-gray-600">Insights and raw reviews to help you act fast.</p>
-                    </div>
+      <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
+        <Loader page={"Customer Reviews"} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
+        <p className="text-sm text-red-500">{error}</p>
+      </div>
+    );
+  }
+
+  // ── UI ──
+  return (
+    <div className="h-screen overflow-hidden bg-[#f8fafc] flex flex-col">
+      <div className="flex-1 px-6 py-8 min-h-0">
+        <div className="max-w-7xl mx-auto h-full min-h-0">
+          <div className="grid grid-cols-1 xl:grid-cols-[300px_1fr] gap-6 h-full min-h-0">
+
+            {/* LEFT COLUMN: TITLE + KEYWORDS */}
+            <div className="flex flex-col gap-4 min-h-0 h-full">
+              
+              {/* KEYWORDS (with title inside) */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col flex-1">
+                {/* TITLE SECTION */}
+                <div className="p-5 flex-shrink-0">
+                  <h1 className="text-2xl font-bold text-gray-900">Customer Reviews</h1>
+                  <p className="text-sm text-gray-400 mt-1">
+                    {business?.review_count || 0} total reviews
+                  </p>
                 </div>
 
-                {/* TOP TWO-COLUMN: Vibe Summary + Keyword Insights */}
-                <div className="grid grid-cols-1 xl:grid-cols-[1fr_420px] gap-4">
-                    <div>
-                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                            <VibeSummaryCard
-                                summary={business?.vibe_summary || business?.summary}
-                                reviewCount={business?.review_count}
-                            />
-                        </div>
-                    </div>
+                {/* SEPARATOR */}
+                <div className="h-px bg-gray-100 flex-shrink-0" />
 
-                    <aside>
-                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-lg font-semibold">Keyword Insights</h3>
-                                <div className="text-sm text-gray-500">At-a-glance</div>
-                            </div>
+                {/* KEYWORDS CONTENT */}
+                <div className="p-5 space-y-4">
+                  <div>
+                    <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
+                      <Smile className="w-3 h-3 text-emerald-500" /> Positive
+                    </p>
+                    {positiveKeywords.length === 0 ? (
+                      <p className="text-xs text-gray-300 italic">
+                        No positive keywords yet
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {positiveKeywords.map((k, i) => (
+                          <KeywordPill key={i} label={k.term} variant="positive" />
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
-                            <div className="grid grid-cols-1 gap-4">
-                                <div>
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <div className="p-2 rounded-md bg-green-50 text-green-700">
-                                            <Smile className="w-4 h-4" />
-                                        </div>
-                                        <h4 className="font-semibold">Top Positive Keywords</h4>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {positiveKeywords.length === 0 && (
-                                            <div className="text-sm text-gray-400">No positive keywords available</div>
-                                        )}
-                                        {positiveKeywords.map((k, idx) => (
-                                            <div key={idx} className="inline-flex items-center gap-2 bg-green-50 text-green-800 px-3 py-1.5 rounded-full text-sm">
-                                                <span className="font-medium">{k.term}</span>
-                                                {k.score != null && (
-                                                    <span className="text-xs text-green-700 opacity-80">{k.score}</span>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <div className="p-2 rounded-md bg-red-50 text-red-700">
-                                            <Frown className="w-4 h-4" />
-                                        </div>
-                                        <h4 className="font-semibold">Top Negative Keywords</h4>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {negativeKeywords.length === 0 && (
-                                            <div className="text-sm text-gray-400">No negative keywords available</div>
-                                        )}
-                                        {negativeKeywords.map((k, idx) => (
-                                            <div key={idx} className="inline-flex items-center gap-2 bg-red-50 text-red-800 px-3 py-1.5 rounded-full text-sm">
-                                                <span className="font-medium">{k.term}</span>
-                                                {k.score != null && (
-                                                    <span className="text-xs text-red-700 opacity-80">{k.score}</span>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </aside>
+                  <div>
+                    <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
+                      <Frown className="w-3 h-3 text-red-500" /> Negative
+                    </p>
+                    {negativeKeywords.length === 0 ? (
+                      <p className="text-xs text-gray-300 italic">
+                        No negative keywords yet
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {negativeKeywords.map((k, i) => (
+                          <KeywordPill key={i} label={k.term} variant="negative" />
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-
-                {/* SEARCH / FILTER BAR */}
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-                    <div className="flex flex-col md:flex-row md:items-center md:gap-4">
-                        <div className="flex-1 flex items-center gap-3">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                                <input
-                                    value={query}
-                                    onChange={(e) => setQuery(e.target.value)}
-                                    placeholder="Search reviews, user, or content"
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 mt-3 md:mt-0">
-                            <div className="flex items-center gap-2">
-                                <Filter className="w-4 h-4 text-gray-500" />
-                                <select value={sentimentFilter} onChange={(e) => setSentimentFilter(e.target.value)} className="border border-gray-200 rounded-md px-2 py-1 text-sm">
-                                    <option value="all">All Sentiments</option>
-                                    <option value="positive">Positive</option>
-                                    <option value="neutral">Neutral</option>
-                                    <option value="negative">Negative</option>
-                                </select>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <SlidersHorizontal className="w-4 h-4 text-gray-500" />
-                                <div className="flex items-center gap-2">
-                                    <input type="number" value={ratingMin} min={0} max={5} onChange={(e) => setRatingMin(Number(e.target.value))} className="w-16 border border-gray-200 rounded-md px-2 py-1 text-sm" />
-                                    <span className="text-sm text-gray-400">to</span>
-                                    <input type="number" value={ratingMax} min={0} max={5} onChange={(e) => setRatingMax(Number(e.target.value))} className="w-16 border border-gray-200 rounded-md px-2 py-1 text-sm" />
-                                </div>
-                            </div>
-
-                            <div className="hidden md:block">
-                                <select value={aspectFilter} onChange={(e) => setAspectFilter(e.target.value)} className="border border-gray-200 rounded-md px-2 py-1 text-sm">
-                                    <option value="">All aspects</option>
-                                    {aspectOptions.map((a, i) => (
-                                        <option key={i} value={a}>{a}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} className="border border-gray-200 rounded-md px-2 py-1 text-sm">
-                                    <option value="newest">Newest</option>
-                                    <option value="oldest">Oldest</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* REVIEWS LIST */}
-                <div className="grid grid-cols-1 gap-4">
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                        <h3 className="text-lg font-semibold mb-4">Reviews ({filteredReviews.length})</h3>
-
-                        {filteredReviews.length === 0 ? (
-                            <div className="text-gray-500">No reviews match your filters.</div>
-                        ) : (
-                            <div className="flex flex-col gap-4">
-                                {filteredReviews.map((r) => (
-                                    <ReviewCard key={r.id} review={r} />
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
+              </div>
 
             </div>
+
+            {/* RIGHT COLUMN: SEARCH + REVIEWS */}
+            <div className="flex flex-col gap-4 h-full min-h-0 overflow-hidden">
+
+              {/* SEARCH + INLINE FILTERS */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 flex flex-col sm:flex-row sm:items-center gap-3 flex-shrink-0">
+
+                {/* SEARCH */}
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search reviews…"
+                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#004687]/20"
+                  />
+                </div>
+
+                {/* FILTERS INLINE */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+
+                  {/* Aspect */}
+                  {aspectOptions.length > 0 && (
+                    <SelectField
+                      value={aspectFilter}
+                      onChange={(e) => setAspectFilter(e.target.value)}
+                    >
+                      <option value="">All aspects</option>
+                      {aspectOptions.map((a) => (
+                        <option key={a} value={a}>
+                          {a}
+                        </option>
+                      ))}
+                    </SelectField>
+                  )}
+
+                  {/* SORT */}
+                  <SelectField
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value)}
+                  >
+                    <option value="newest">Newest</option>
+                    <option value="oldest">Oldest</option>
+                  </SelectField>
+
+                  {(query || aspectFilter) && (
+                    <button
+                      onClick={() => {
+                        setQuery("");
+                        setAspectFilter("");
+                        setSortOrder("newest");
+                      }}
+                      className="text-xs text-[#004687] font-medium hover:underline"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* RESULTS - SCROLLABLE */}
+              <div className="flex-1 overflow-y-auto min-h-0">
+                {filteredReviews.length === 0 ? (
+                  <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+                    <Filter className="w-6 h-6 text-gray-200 mx-auto mb-2" />
+                    <p className="text-sm text-gray-400">No reviews found</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {filteredReviews.map((r) => (
+                      <div
+                        key={r.id}
+                        className="bg-white rounded-2xl border border-gray-100 shadow-sm"
+                      >
+                        <ReviewCard review={r} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </div>
         </div>
-    );
+      </div>
+    </div>
+  );
 }
 
 export default BusinessReviews;

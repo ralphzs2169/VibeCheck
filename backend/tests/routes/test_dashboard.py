@@ -128,7 +128,7 @@ async def test_get_dashboard_aggregates_payload(client, monkeypatch):
 	assert body["review_count"] == 12
 	assert body["business_health"]["score"] == 78
 	assert body["vibe_chart"]["7D"][0]["period"] == "daily"
-	assert body["aspects"][0]["name"] == "service"
+	assert body["aspect_frequency"]["frequency"]["service"] == 10
 
 
 @pytest.mark.asyncio

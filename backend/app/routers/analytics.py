@@ -49,23 +49,91 @@ async def get_analytics(
         business_id,
         current_user.id
     )
-
     review_count = await business_service.get_business_review_count(db, business_id)
-    review_activity = await get_review_activity(db, business_id)
 
+    # =====================================
+    # Metric Cards and Summary Stats
+    # =====================================
+    # (CARD 1) Data Quality, a threshold metric to indicate if there's enough data to generate 
+    #          reliable insights, based on review count and recency
+    #         - No separate function; Derived from business health computation
+
+    # (CARD 2) Feedback Consisteny
+    sentiment_volatility = await get_sentiment_volatility(db, business_id)
+
+    # (CARD 3) Vibe Trend Direction (improving, declining, stable)
     vibe_score_trend = await get_vibe_score_trend(db, business_id)
-    latest_vibe = await  get_latest_vibe(db, business_id)
-    
-    # ABSA Analytics
+
+    # =====================================
+    # Aspect Health Summary with Trends 
+    # =====================================
     aspect_summary = await get_aspect_summary(db, business_id)
     aspect_trends = await get_aspect_trends(db, business_id)
+
+    # =====================================
+    # Aspect Frequency Bar Chart
+    # =====================================
     aspect_frequency = await get_aspect_frequency(
         db=db,
         business_id=business_id,
         aspects=aspect_summary,
     )
 
-    # Compute overall business health score based on vibe score, trends, aspect performance, and review volume
+    # Loop through aspects to build a list of aspect details including trend data for frontend display
+    aspects = [
+        {
+            "name": aspect_name,
+            "score": aspect_data["avg_score"],
+            "label": aspect_data["label"],
+            "trend": aspect_trends["trends"].get(aspect_name, {}).get("trend", "stable"),
+            "change": aspect_trends["trends"].get(aspect_name, {}).get("change", 0),
+        }
+        for aspect_name, aspect_data in aspect_summary["summary"].items()
+    ]
+
+    # =====================================
+    # Vibe Score Heatmap
+    # =====================================
+    vibe_score_daily = await get_vibe_score_over_time(db, business_id, "daily")
+    vibe_score_weekly = await get_vibe_score_over_time(db, business_id, "weekly")
+    vibe_score_monthly = await get_vibe_score_over_time(db, business_id, "monthly")
+
+    # =================================
+    # Primary Risk Driver Insight
+    # =================================
+    primary_risk_driver = insights_service.get_primary_risk_driver(
+        aspect_summary=aspect_summary["summary"],
+        aspect_trends=aspect_trends["trends"],
+        review_count=review_count
+    )
+
+    # ================================
+    # Positive Drivers Insight
+    # ================================
+    positive_drivers = insights_service.get_positive_drivers(
+        aspect_summary=aspect_summary["summary"],
+        aspect_trends=aspect_trends["trends"],
+        review_count=review_count
+    )
+
+    # =================================
+    # Negative Signals Insight
+    # ================================
+    review_activity = await get_review_activity(db, business_id)
+    negative_signals = insights_service.get_negative_signals(
+        aspect_summary=aspect_summary["summary"],
+        aspect_trends=aspect_trends["trends"],
+        vibe_trend=vibe_score_trend,
+        sentiment_volatility=sentiment_volatility,
+        event_detection=review_activity
+    )
+
+
+    # Fed into business health computation
+    latest_vibe = await  get_latest_vibe(db, business_id)
+    # =====================================
+    # Business Health Diagnostic Section
+    # =====================================
     business_health = await compute_business_health(
         vibe_score=latest_vibe.get("vibe_score", 0),
         trend=vibe_score_trend.get("trend", "stable"),
@@ -73,64 +141,20 @@ async def get_analytics(
         review_count=review_count
     )
 
-    vibe_score_daily = await get_vibe_score_over_time(db, business_id, "daily")
-    vibe_score_weekly = await get_vibe_score_over_time(db, business_id, "weekly")
-    vibe_score_monthly = await get_vibe_score_over_time(db, business_id, "monthly")
-
-    # Stability metrics
-    sentiment_volatility = await get_sentiment_volatility(db, business_id)
-    vibe_volatility = await get_vibe_volatility(db, business_id)
-
     return {
         "review_count": review_count,
         "latest_vibe": latest_vibe,
-        "business_health": business_health,     
 
-
-        "primary_risk_driver": insights_service.get_primary_risk_driver(
-            aspect_summary=aspect_summary["summary"], aspect_trends=aspect_trends["trends"], review_count=review_count
-        ),
-
-        "negative_signals": insights_service.get_negative_signals(
-            aspect_summary=aspect_summary["summary"],
-            aspect_trends=aspect_trends["trends"],
-            vibe_trend=vibe_score_trend,
-            sentiment_volatility=sentiment_volatility,
-            event_detection=review_activity
-        ),
-
-        "positive_drivers": insights_service.get_positive_drivers(
-            aspect_summary=aspect_summary["summary"],
-            aspect_trends=aspect_trends["trends"],
-            review_count=review_count
-        ),
-
-        "aspect_intelligence": insights_service.compute_aspect_intelligence(
-            aspect_summary=aspect_summary["summary"], aspect_trends=aspect_trends["trends"],
-            sentiment_volatility=sentiment_volatility
-        ),
-        "review_activity": review_activity,
-
+        "business_health": business_health,
+        "primary_risk_driver": primary_risk_driver,
+        "negative_signals": negative_signals,
+        "positive_drivers": positive_drivers,
         "aspect_frequency": aspect_frequency,
-        "forecast_vibe": await forecast_vibe_score(db, business_id),
-        "peak_and_drop": await get_peak_and_drop(db, business_id),
      
         "vibe_score_daily": vibe_score_daily,      # for heatmap visualization
         "vibe_score_weekly": vibe_score_weekly,    # for weekly trends
         "vibe_score_monthly": vibe_score_monthly,  # for monthly trends
         "sentiment_volatility": sentiment_volatility,
-        "vibe_volatility": vibe_volatility,
 
-        "aspects": [
-            {
-                "name": k,
-                "score": v["avg_score"],
-                "label": v["label"],
-
-                # include time-series trend for each aspect
-                "trend": aspect_trends["trends"].get(k, {}).get("trend", "stable"),
-                "change": aspect_trends["trends"].get(k, {}).get("change", 0),
-            }
-            for k, v in aspect_summary["summary"].items()
-        ],
+        "aspects": aspects,
     }

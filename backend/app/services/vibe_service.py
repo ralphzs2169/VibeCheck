@@ -278,3 +278,56 @@ async def compute_vibe_summary(
             "is_polarizing": is_polarizing
         }
     }
+
+
+async def compute_vibe_keywords(
+    db: AsyncSession,
+    business_id: int,
+    models: MLRegistry,
+    as_of_date: datetime.datetime | None = None,
+    allow_insufficient_data: bool = False,
+) -> dict:
+    """
+    Extract only the top positive and negative keywords for a business.
+
+    This is a lightweight companion to compute_vibe_summary when the caller only
+    needs keyword signals and does not want vibe scoring, labels, or prose.
+    """
+
+    reviews_with_scores = await get_reviews_with_scores(db, business_id, as_of_date)
+    review_count = len(reviews_with_scores)
+
+    if not allow_insufficient_data and review_count < MINIMUM_REVIEW_COUNT:
+        return {
+            "status": "insufficient_data",
+            "business_id": business_id,
+            "review_count": review_count,
+            "positive_keywords": [],
+            "negative_keywords": [],
+            "message": (
+                f"At least {MINIMUM_REVIEW_COUNT} reviews are needed to extract "
+                f"vibe keywords. Currently, there are {review_count} reviews."
+            ),
+        }
+
+    if review_count == 0:
+        return {
+            "status": "insufficient_data",
+            "business_id": business_id,
+            "review_count": review_count,
+            "positive_keywords": [],
+            "negative_keywords": [],
+            "message": "No reviews available to extract vibe keywords.",
+        }
+
+    reviews_text = [content for content, _ in reviews_with_scores]
+    keywords = extract_keywords(reviews_text, models)
+    positive_keywords, negative_keywords = classify_keywords(keywords, models)
+
+    return {
+        "status": "ok",
+        "business_id": business_id,
+        "review_count": review_count,
+        "positive_keywords": positive_keywords,
+        "negative_keywords": negative_keywords,
+    }
