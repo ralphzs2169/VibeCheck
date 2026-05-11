@@ -51,7 +51,7 @@ VIBE_UI_MAP = {
 
 
 # number of keywords to extract for vibe summaries (can be adjusted based on desired summary length and detail)
-KEYWORD_EXTRACTION_TOP_N = 4
+KEYWORD_EXTRACTION_TOP_N = 8
 
 # used to determine if a business is considered "neutral" in vibe, 
 # which can affect how we present the summary
@@ -123,7 +123,7 @@ BUSINESS_HEALTH_CONFIG = {
 
     "confidence": {
         "half_saturation_reviews": 10,
-        "min_score": 3,
+        "min_score": 15,
         "low_weight": 0.3,
         "mid_weight": 0.7
     },
@@ -303,6 +303,9 @@ MIN_VIBE_VOLATILITY_POINTS = 5
 # --------------------------
 
 EMA_ALPHA = 0.3
+
+# Minimum number of recent reviews for velocity to be considered reliable
+MIN_REVIEW_VELOCITY_POINTS = 5
 
 Z_SCORE_SENTIMENT_THRESHOLD = 1.5
 Z_SCORE_VOLUME_THRESHOLD = 1.5

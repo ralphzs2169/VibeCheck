@@ -84,13 +84,13 @@ function FrequentAspectAnalysis({ data = {} }) {
                     </p>
                 </div>
 
-                <span className={`text-xs px-3 py-1 rounded-full border font-semibold ${
+                {/* <span className={`text-xs px-3 py-1 rounded-full border font-semibold ${
                     isReliable
                         ? "bg-blue-50 text-blue-700 border-blue-100"
                         : "bg-amber-50 text-amber-700 border-amber-100"
                 }`}>
                     {isReliable ? "Reliable" : "Early-stage"}
-                </span>
+                </span> */}
             </div>
 
             {/* CHART AREA */}

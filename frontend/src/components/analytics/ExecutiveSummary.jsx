@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, Minus, Zap, ShieldCheck, BarChart2 } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Zap, Activity, BarChart2 } from "lucide-react";
 
 const BRAND = "#004687";
 
@@ -19,6 +19,20 @@ function humanVolatility(stability, volatility) {
   return                               { label: "Mixed",    sub: "Some variation in vibe over time", color: "text-slate-600",   bg: "bg-slate-50",   border: "border-slate-100"   };
 }
 
+function humanAlignment(alignment) {
+  if (alignment == null) {
+    return { label: "Unknown", sub: "Aspect alignment unavailable", color: "text-slate-400" };
+  }
+
+  const score = Math.max(0, Math.min(1, alignment));
+
+  if (score >= 0.8) return { label: "Highly Aligned", sub: "Feedback is consistent across key areas", color: "text-emerald-600" };
+  if (score >= 0.6) return { label: "Aligned", sub: "Most areas feel consistent to guests", color: "text-emerald-600" };
+  if (score >= 0.4) return { label: "Mixed", sub: "Consistency varies by aspect", color: "text-amber-600" };
+  if (score >= 0.2) return { label: "Misaligned", sub: "Guest feedback differs across areas", color: "text-red-500" };
+  return { label: "Highly Misaligned", sub: "Strong gaps between aspect experiences", color: "text-red-500" };
+}
+
 function humanTrend(trendLabel) {
   if (trendLabel === "improving") return { label: "Improving",  sub: "Customers are responding more positively", color: "text-emerald-600", icon: TrendingUp,   iconColor: "text-emerald-500" };
   if (trendLabel === "declining") return { label: "Declining",  sub: "Satisfaction has been dropping",           color: "text-red-600",     icon: TrendingDown, iconColor: "text-red-500"     };
@@ -26,16 +40,44 @@ function humanTrend(trendLabel) {
 }
 
 function humanDataQuality(quality) {
-  if (quality === "high")     return { label: "Strong",   sub: "Insights are well-supported",   color: "text-emerald-600", pct: 90 };
-  if (quality === "moderate") return { label: "Moderate", sub: "Enough data to act on",          color: "text-amber-600",   pct: 55 };
-  if (quality === "low")      return { label: "Limited",  sub: "More reviews will improve this", color: "text-red-500",     pct: 25 };
-  return                             { label: "Unknown",  sub: "Data quality unavailable",       color: "text-slate-400",   pct: 0  };
+  if (quality === "high")      return { label: "High",      sub: "Insights are well-supported",   color: "text-emerald-600", pct: 90 };
+  if (quality === "moderate")  return { label: "Moderate",  sub: "Enough data to act on",          color: "text-amber-600",   pct: 55 };
+  if (quality === "low")       return { label: "Low",       sub: "More reviews will improve this", color: "text-red-500",     pct: 25 };
+  if (quality === "very_low")  return { label: "Very low",  sub: "Too few reviews for confidence", color: "text-red-500",     pct: 10 };
+  if (quality === "no_data")   return { label: "No data",   sub: "No reviews available yet",      color: "text-slate-400",   pct: 0 };
+  return                              { label: "Unknown",   sub: "Data quality unavailable",       color: "text-slate-400",   pct: 0 };
 }
 
-function humanColdStart(isColdStart) {
-  return isColdStart
-    ? { label: "Building History", sub: "Not enough history yet",       color: "text-amber-600",   bg: "bg-amber-50",   border: "border-amber-100"   }
-    : { label: "Established",      sub: "Sufficient history to analyse", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" };
+function humanReviewVelocity(velocity) {
+  const status = velocity?.status;
+  const recentPerWeek = Number(velocity?.recent_per_week ?? 0);
+  const changePct = velocity?.change_pct;
+
+  if (status === "insufficient_data") {
+    return {
+      value: "--",
+      sub: "Not enough recent reviews yet",
+      color: "text-slate-400",
+    };
+  }
+
+  const value = `${recentPerWeek.toFixed(1)}/wk`;
+
+  let sub = "Holding steady vs prior period";
+  let color = "text-slate-600";
+
+  if (changePct == null) {
+    sub = "New activity vs prior period";
+    color = "text-amber-600";
+  } else if (changePct >= 0.1) {
+    sub = `Up ${Math.round(changePct * 100)}% vs prior period`;
+    color = "text-emerald-600";
+  } else if (changePct <= -0.1) {
+    sub = `Down ${Math.round(Math.abs(changePct) * 100)}% vs prior period`;
+    color = "text-red-600";
+  }
+
+  return { value, sub, color };
 }
 
 /* ── tile ── */
@@ -79,17 +121,19 @@ export default function ExecutiveSummary({ dashboard = {}, loading = false }) {
 
   const businessHealth = dashboard.business_health ?? {};
   const businessHealthRaw = businessHealth.raw ?? {};
+  const businessHealthBreakdown = businessHealth.breakdown ?? {};
   const sentimentVolatility = dashboard.sentiment_volatility ?? {};
   const vibeVolatility = dashboard.vibe_volatility ?? {};
+  const reviewVelocity = dashboard.review_velocity ?? {};
 
   /* ── derived values ── */
   const trendLabel = businessHealthRaw.trend_label ?? "stable";
   const trendStatus = humanTrend(trendLabel);
   const TrendStatusIcon = trendStatus.icon;
 
-  const consistencyStatus = humanVolatility(sentimentVolatility.stability, sentimentVolatility.volatility);
+  const consistencyStatus = humanAlignment(businessHealthBreakdown.alignment);
   const dataQualityStatus = humanDataQuality(businessHealthRaw.data_quality);
-  const maturityStatus = humanColdStart(businessHealthRaw.is_cold_start);
+  const reviewVelocityStatus = humanReviewVelocity(reviewVelocity);
 
   return (
     <div className="space-y-3">
@@ -103,7 +147,7 @@ export default function ExecutiveSummary({ dashboard = {}, loading = false }) {
         {/* 1 — Data quality */}
         <ContextTile
           icon={BarChart2}
-          label="Signal Strength"
+          label="Data Quality"
           value={dataQualityStatus.label}
           valueColor={dataQualityStatus.color}
           sub={dataQualityStatus.sub}
@@ -114,7 +158,7 @@ export default function ExecutiveSummary({ dashboard = {}, loading = false }) {
         {/* 2 — Temporal vibe stability */}
         <ContextTile
           icon={Zap}
-          label="Feedback Consistency"
+          label="Experience Consistency"
           value={consistencyStatus.label}
           valueColor={consistencyStatus.color}
           sub={consistencyStatus.sub}
@@ -132,13 +176,13 @@ export default function ExecutiveSummary({ dashboard = {}, loading = false }) {
           delay={240}
         />
 
-        {/* 4 — Cold start */}
+        {/* 4 — Review velocity */}
         <ContextTile
-          icon={ShieldCheck}
-          label="Data Maturity"
-          value={maturityStatus.label}
-          valueColor={maturityStatus.color}
-          sub={maturityStatus.sub}
+          icon={Activity}
+          label="Review Velocity"
+          value={reviewVelocityStatus.value}
+          valueColor={reviewVelocityStatus.color}
+          sub={reviewVelocityStatus.sub}
           delay={320}
         />
 

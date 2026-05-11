@@ -9,7 +9,7 @@ function MetricCard({
 }) {
 
     return (
-        <div className="border border-gray-100 shadow-sm  rounded-2xl p-5 flex flex-col gap-3">
+        <div className="border border-gray-100 shadow-sm  bg-white rounded-2xl p-5 flex flex-col gap-3">
 
             {/* header */}
             <div className="flex items-center justify-between">

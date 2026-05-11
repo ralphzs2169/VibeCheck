@@ -1,4 +1,5 @@
-import { Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
+import { Routes, Route, useLocation } from "react-router-dom";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Home from "./pages/Home";
@@ -15,9 +16,30 @@ import BusinessAnalytics from "./pages/business_owner/BusinessAnalytics.jsx";
 import ResortsDiscovery from "./pages/ResortsDiscovery";
 
 
+function ScrollManager() {
+  const location = useLocation();
+
+  useEffect(() => {
+    const targetId = location.hash.replace("#", "");
+
+    if (!targetId) {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      return;
+    }
+
+    const element = document.getElementById(targetId);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [location.pathname, location.hash]);
+
+  return null;
+}
+
 function App() {
   return (
     <>
+      <ScrollManager />
       <Navbar />
 
       <Routes>

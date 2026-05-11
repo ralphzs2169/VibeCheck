@@ -136,6 +136,7 @@ function BusinessDashboard() {
                             <MetricCard
                                 label="Total Reviews"
                                 value={business.review_count || 0}
+                                showTrend={false}
                                 subtitle="All-time collected feedback"
                             />
 
@@ -158,7 +159,7 @@ function BusinessDashboard() {
                         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6">
                             <VibeChart
                                 data={vibeChart}
-                                vibeOverTime={business?.vibe_over_time || []}
+                                vibeOverTime={business?.vibe_score_daily || {}}
                                 peakAndDrop={business?.peak_and_drop || {}}
                                 embedded
                                 headerRight={

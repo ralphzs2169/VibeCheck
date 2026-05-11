@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
 import HeroSection from '../components/HeroSection';
 import SearchBar from '../components/SearchBar';
 import InsightCard from '../components/InsightCard';
@@ -13,7 +12,6 @@ import axios from 'axios';
 import WaveBackground from '../components/WaveBackground';
 
 export default function Home() {
-  const location = useLocation();
   const [businesses, setBusinesses] = useState([]);
   const [filteredBusinesses, setFilteredBusinesses] = useState([]);
   const [vibeDataMap, setVibeDataMap] = useState({});
@@ -78,24 +76,6 @@ export default function Home() {
     fetchBusinesses();
   }, []);
 
-  useEffect(() => {
-    const targetId = location.hash.replace('#', '');
-
-    const scrollToTarget = () => {
-      if (!targetId) {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
-      }
-
-      const element = document.getElementById(targetId);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    };
-
-    const timer = window.setTimeout(scrollToTarget, 50);
-    return () => window.clearTimeout(timer);
-  }, [location.hash]);
 
   // Filter and sort businesses based on search, location, and sort criteria
   useEffect(() => {

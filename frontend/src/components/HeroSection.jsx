@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import hero_image from '../assets/hero_image.jpg';
 
 // HeroSection - a two-column landing hero with visual and floating analytics card
@@ -24,8 +25,8 @@ export default function HeroSection() {
             </div>
 
             <div className="flex items-center gap-4">
-              <ButtonFilled>Explore Resorts</ButtonFilled>
-              <ButtonOutline>Register Your Resort</ButtonOutline>
+              <ButtonFilled to="/businesses">Explore Resorts</ButtonFilled>
+              <ButtonOutline to="/register-business">Register Your Resort</ButtonOutline>
             </div>
           </div>
 
@@ -55,19 +56,25 @@ export default function HeroSection() {
 //   );
 // }
 
-function ButtonFilled({ children }) {
+function ButtonFilled({ children, to }) {
   return (
-    <button className="inline-flex items-center gap-3 px-5 py-3 bg-[#07234D] text-white rounded-lg shadow hover:bg-[#041c3d] transition">
+    <Link
+      to={to}
+      className="inline-flex items-center gap-3 px-5 py-3 bg-[#07234D] text-white rounded-lg shadow hover:bg-[#041c3d] transition"
+    >
       {children}
-    </button>
+    </Link>
   );
 }
 
-function ButtonOutline({ children }) {
+function ButtonOutline({ children, to }) {
   return (
-    <button className="inline-flex items-center gap-3 px-5 py-3 border border-[#07234D] text-[#07234D] rounded-lg hover:bg-[#f7fbff] transition">
+    <Link
+      to={to}
+      className="inline-flex items-center gap-3 px-5 py-3 border border-[#07234D] text-[#07234D] rounded-lg hover:bg-[#f7fbff] transition"
+    >
       {children}
-    </button>
+    </Link>
   );
 }
 

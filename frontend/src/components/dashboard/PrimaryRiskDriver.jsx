@@ -49,8 +49,8 @@ function PrimaryRiskDriver({ data = {} }) {
     const dataMaturity = Math.min((sampleSize / (minRequired * 4)) * 100, 100); // Confidence factor as percentage
     
     const reliabilityLabel = isReliable 
-        ? `Reliable (${sampleSize} reviews)` 
-        : `Early Signal (${sampleSize}/${minRequired} reviews)`;
+        ? `Reliable (${sampleSize} mentions)` 
+        : `Early Signal (${sampleSize}/${minRequired} mentions)`;
     const reliabilityColor = isReliable ? "text-green-600" : "text-amber-600";
     const reliabilityBg = isReliable ? "bg-green-50" : "bg-amber-50";
 
@@ -60,7 +60,7 @@ function PrimaryRiskDriver({ data = {} }) {
             <div className="flex items-center justify-between mb-4">
                 <div>
                     <div className="flex items-center gap-2 mb-1">
-                        <AlertTriangle className="w-4 h-4 text-gray-700" />
+                        <AlertTriangle className="w-4 h-4 text-orange-600" />
                         <h2 className="text-lg font-semibold text-gray-900">
                             Primary Risk Driver
                         </h2>

@@ -1,3 +1,6 @@
+# This module contains functions to compute sentiment analytics for a business based on its reviews.
+# It includes functions to compute sentiment trends over time, distribution of sentiment labels, and volatility of sentiment scores. 
+# Each function retrieves relevant review data from the database, performs calculations, and returns results 
 import numpy as np
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -158,7 +161,6 @@ async def get_sentiment_trend_slope(db: AsyncSession, business_id: int):
         "slope": float(slope),
         "meta": reliability(len(rows), MIN_SENTIMENT_TREND_POINTS)
     }
-    
 
 
 async def get_sentiment_volatility(db: AsyncSession, business_id: int):

@@ -58,8 +58,9 @@ function BusinessCard({ business, vibeData, loading = false }) {
                   setImageError(true);
                   setImageLoaded(true);
                 }}
-                className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 transition-opacity duration-300 ${imageLoaded ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'}`}
+                className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
                 aria-busy={!imageLoaded}
+                style={{ willChange: 'transform, opacity' }}
               />
 
               {!imageLoaded && (

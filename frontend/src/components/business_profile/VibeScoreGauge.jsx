@@ -46,16 +46,16 @@ export default function VibeScoreGauge({ score, label, reviewCount, positive = 0
       <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">{getVibeLevelFromScore(score, reviewCount).label}</h3>
 
       {/* Sentiment counts */}
-      <div className="flex gap-4 justify-center w-full">
+      {/* <div className="flex gap-4 justify-center w-full">
         <div className="text-center">
           <p className="text-lg font-bold text-emerald-600">{positive}</p>
           <p className="text-xs text-gray-600">Positive</p>
-        </div>
+        </div>  
         <div className="text-center">
           <p className="text-lg font-bold text-rose-600">{negative}</p>
           <p className="text-xs text-gray-600">Negative</p>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }

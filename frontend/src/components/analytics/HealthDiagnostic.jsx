@@ -97,8 +97,13 @@ export default function HealthDiagnostic({ data = {} }) {
 					<div className="rounded-2xl border border-gray-100 bg-white p-4">
 						<p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-4">Score Drivers</p>
 						<div className="grid gap-3.5">
-							{["vibe", "trend", "alignment", "confidence"].map((key) => (
-								<BreakdownBar key={key} label={key} value={breakdown[key]} />
+							{[
+								{ key: "vibe", label: "Vibe" },
+								{ key: "trend", label: "Trend" },
+								{ key: "alignment", label: "Experience Consistency" },
+								{ key: "confidence", label: "Confidence" },
+							].map(({ key, label }) => (
+								<BreakdownBar key={key} label={label} value={breakdown[key]} />
 							))}
 						</div>
 					</div>

@@ -16,15 +16,15 @@ from backend.app.services.analytics.health_score_analytics import (
 from backend.app.services.analytics.sentiment_analytics import get_sentiment_volatility
                                                                 
 from backend.app.services.analytics.vibe_analytics import (
-    forecast_vibe_score,
     get_latest_vibe,
     get_vibe_score_trend,
-    get_peak_and_drop,
-    get_vibe_volatility,
     get_vibe_score_over_time
 )
 
-from backend.app.services.analytics.review_analytics import get_review_activity
+from backend.app.services.analytics.review_analytics import (
+    get_review_activity,
+    get_review_velocity,
+)
 
 router = APIRouter()
 
@@ -120,6 +120,7 @@ async def get_analytics(
     # Negative Signals Insight
     # ================================
     review_activity = await get_review_activity(db, business_id)
+    review_velocity = await get_review_velocity(db, business_id)
     negative_signals = insights_service.get_negative_signals(
         aspect_summary=aspect_summary["summary"],
         aspect_trends=aspect_trends["trends"],
@@ -155,6 +156,7 @@ async def get_analytics(
         "vibe_score_weekly": vibe_score_weekly,    # for weekly trends
         "vibe_score_monthly": vibe_score_monthly,  # for monthly trends
         "sentiment_volatility": sentiment_volatility,
+        "review_velocity": review_velocity,
 
         "aspects": aspects,
     }

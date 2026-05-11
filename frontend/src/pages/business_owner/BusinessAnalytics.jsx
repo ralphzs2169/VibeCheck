@@ -72,7 +72,7 @@ function BusinessAnalytics() {
             <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6">
 
                 <AspectAnalytics
-                    aspects={business?.aspects || {}}
+                    aspects={business?.aspects || []}
                     onViewAll={() => {}}
                     compact={false}
                 />

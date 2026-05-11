@@ -74,7 +74,7 @@ function HealthInsightsTooltip({ data }) {
                 {/* ALIGNMENT */}
                 <div>
                     <div className="flex justify-between">
-                        <p className="font-medium">Review Alignment</p>
+                        <p className="font-medium">Experience Consistency</p>
                         <p className="font-semibold text-[#004687]">
                             {insights.alignment?.label ?? "--"}
                         </p>

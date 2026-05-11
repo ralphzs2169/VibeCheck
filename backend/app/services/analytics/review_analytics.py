@@ -3,6 +3,7 @@
 
 import numpy as np
 import pandas as pd
+from datetime import UTC, datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +11,7 @@ from backend.app.core.constants import (
         CONFIDENCE_SENTIMENT_WEIGHT,
         CONFIDENCE_VOLUME_WEIGHT,
         MIN_SPIKE_DATA_POINTS,
+    MIN_REVIEW_VELOCITY_POINTS,
         Z_SCORE_SENTIMENT_THRESHOLD,
         Z_SCORE_VOLUME_THRESHOLD,
 )
@@ -45,6 +47,66 @@ def stable_z(series):
     if std == 0:
         std = 1.0
     return (series - np.mean(series)) / std
+
+
+async def get_review_velocity(db: AsyncSession, business_id: int, window_days: int = 30):
+    """
+    Measures how fast new reviews are arriving by comparing the most recent period
+    to the prior period of the same length.
+    """
+
+    end = datetime.now(UTC)
+    recent_start = end - timedelta(days=window_days)
+    previous_start = recent_start - timedelta(days=window_days)
+
+    recent_stmt = select(func.count(Review.id)).where(
+        Review.business_id == business_id,
+        Review.created_at >= recent_start,
+        Review.created_at < end,
+    )
+
+    previous_stmt = select(func.count(Review.id)).where(
+        Review.business_id == business_id,
+        Review.created_at >= previous_start,
+        Review.created_at < recent_start,
+    )
+
+    recent_count = int((await db.execute(recent_stmt)).scalar() or 0)
+    previous_count = int((await db.execute(previous_stmt)).scalar() or 0)
+
+    total_count = recent_count + previous_count
+
+    if total_count < MIN_REVIEW_VELOCITY_POINTS:
+        return {
+            "status": "insufficient_data",
+            "window_days": window_days,
+            "recent_count": recent_count,
+            "previous_count": previous_count,
+            "recent_per_week": 0.0,
+            "previous_per_week": 0.0,
+            "change_pct": None,
+            "meta": reliability(total_count, MIN_REVIEW_VELOCITY_POINTS),
+        }
+
+    weeks = max(window_days / 7, 1)
+    recent_per_week = recent_count / weeks
+    previous_per_week = previous_count / weeks
+
+    if previous_count <= 0:
+        change_pct = None
+    else:
+        change_pct = (recent_count - previous_count) / previous_count
+
+    return {
+        "status": "computed",
+        "window_days": window_days,
+        "recent_count": recent_count,
+        "previous_count": previous_count,
+        "recent_per_week": round(recent_per_week, 2),
+        "previous_per_week": round(previous_per_week, 2),
+        "change_pct": change_pct,
+        "meta": reliability(total_count, MIN_REVIEW_VELOCITY_POINTS),
+    }
 
 
 async def get_review_activity(db: AsyncSession, business_id: int):
