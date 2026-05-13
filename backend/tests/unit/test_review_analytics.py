@@ -21,6 +21,7 @@ from backend.app.models.review import Review
 from backend.app.models.user import User
 from backend.app.services.analytics.review_analytics import (
     get_review_activity,
+    get_review_volume_over_time,
     map_urgency,
 )
 
@@ -497,3 +498,61 @@ async def test_get_review_activity_interpretation_messages(session_factory):
     assert "interpretation" in result
     assert isinstance(result["interpretation"], str)
     assert len(result["interpretation"]) > 10  # Non-empty meaningful message
+
+
+# ============================================================================
+# Tests for get_review_volume_over_time()
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_get_review_volume_over_time_daily_granularity(session_factory):
+    async with session_factory() as db:
+        business = await seed_business(db)
+        user = await seed_customer(db, "customer_volume_daily")
+
+        base_date = datetime(2024, 5, 1, 12, 0, 0, tzinfo=UTC)
+        await seed_review(db, business.id, user.id, 0.5, base_date)
+        await seed_review(db, business.id, user.id, 0.4, base_date)
+        await seed_review(db, business.id, user.id, 0.7, base_date + timedelta(days=1))
+
+        result = await get_review_volume_over_time(db, business.id, "daily")
+
+    assert "data" in result
+    assert "meta" in result
+    assert len(result["data"]) == 2
+    assert result["data"][0]["review_count"] == 2
+    assert result["data"][1]["review_count"] == 1
+    assert result["meta"]["is_reliable"] is False
+
+
+@pytest.mark.asyncio
+async def test_get_review_volume_over_time_weekly_granularity(session_factory):
+    async with session_factory() as db:
+        business = await seed_business(db)
+        user = await seed_customer(db, "customer_volume_weekly")
+
+        base_date = datetime(2024, 5, 1, 12, 0, 0, tzinfo=UTC)
+        await seed_review(db, business.id, user.id, 0.5, base_date)
+        await seed_review(db, business.id, user.id, 0.4, base_date + timedelta(days=8))
+
+        result = await get_review_volume_over_time(db, business.id, "weekly")
+
+    assert len(result["data"]) == 2
+    assert all("period" in item and "review_count" in item for item in result["data"])
+
+
+@pytest.mark.asyncio
+async def test_get_review_volume_over_time_monthly_granularity(session_factory):
+    async with session_factory() as db:
+        business = await seed_business(db)
+        user = await seed_customer(db, "customer_volume_monthly")
+
+        base_date = datetime(2024, 5, 1, 12, 0, 0, tzinfo=UTC)
+        await seed_review(db, business.id, user.id, 0.5, base_date)
+        await seed_review(db, business.id, user.id, 0.4, base_date + timedelta(days=35))
+
+        result = await get_review_volume_over_time(db, business.id, "monthly")
+
+    assert len(result["data"]) == 2
+    assert all(item["review_count"] == 1 for item in result["data"])

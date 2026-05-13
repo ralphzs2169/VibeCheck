@@ -45,31 +45,43 @@ async def test_get_reviews_page_returns_reviews_and_keywords(client, monkeypatch
 
     monkeypatch.setattr(reviews_page.business_service, "verify_business_ownership", _verify_business_ownership)
 
-    async def _get_reviews_for_business(_db, business_id):
+    async def _get_reviews_for_business_paginated(_db, business_id, offset=0, limit=20):
         assert business_id == 42
-        return [
-            {
-                "id": 1,
-                "content": "Great service",
-                "sentiment_score": 0.9,
-                "sentiment_label": "positive",
-                "created_at": now,
-                "updated_at": now,
-                "user_id": 1,
-                "business_id": 42,
-                "user": {
+        assert offset == 0
+        assert limit == 20
+        return (
+            [
+                {
                     "id": 1,
-                    "username": "reviewer01",
-                    "firstname": "Rev",
-                    "lastname": "User",
-                    "role": "reviewer",
-                    "business_id": None,
-                },
-                "aspect_sentiments": [],
-            }
-        ]
+                    "content": "Great service",
+                    "sentiment_score": 0.9,
+                    "sentiment_label": "positive",
+                    "created_at": now,
+                    "updated_at": now,
+                    "user_id": 1,
+                    "business_id": 42,
+                    "user": {
+                        "id": 1,
+                        "username": "reviewer01",
+                        "firstname": "Rev",
+                        "lastname": "User",
+                        "role": "reviewer",
+                        "business_id": None,
+                    },
+                    "aspect_sentiments": [],
+                }
+            ],
+            1,
+        )
 
-    async def _compute_vibe_keywords(_db, business_id, models, as_of_date=None, allow_insufficient_data=False):
+    async def _compute_vibe_keywords(
+        _db,
+        business_id,
+        models,
+        as_of_date=None,
+        allow_insufficient_data=False,
+        reviews_with_scores=None,
+    ):
         assert business_id == 42
         assert allow_insufficient_data is True
         return {
@@ -77,7 +89,11 @@ async def test_get_reviews_page_returns_reviews_and_keywords(client, monkeypatch
             "negative_keywords": ["wait time"],
         }
 
-    monkeypatch.setattr(reviews_page.review_service, "get_reviews_for_business", _get_reviews_for_business)
+    monkeypatch.setattr(
+        reviews_page.review_service,
+        "get_reviews_for_business_paginated",
+        _get_reviews_for_business_paginated,
+    )
     monkeypatch.setattr(reviews_page, "compute_vibe_keywords", _compute_vibe_keywords)
 
     response = await client.get("/api/business/reviews")
@@ -87,5 +103,6 @@ async def test_get_reviews_page_returns_reviews_and_keywords(client, monkeypatch
     assert body["business_id"] == 42
     assert body["review_count"] == 1
     assert len(body["reviews"]) == 1
+    assert body["has_more"] is False
     assert body["positive_keywords"] == ["service", "food"]
     assert body["negative_keywords"] == ["wait time"]

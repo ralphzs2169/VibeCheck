@@ -155,6 +155,7 @@ async def test_update_and_delete_review(db_session, monkeypatch):
 		db_session,
 		created.id,
 		ReviewUpdate(content="Updated review content"),
+		DummyModels(),
 	)
 	assert updated.content == "Updated review content"
 

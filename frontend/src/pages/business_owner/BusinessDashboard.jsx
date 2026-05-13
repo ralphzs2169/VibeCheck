@@ -6,7 +6,7 @@ import PeakDropAnalysisCard from "../../components/dashboard/PeakDropAnalysisCar
 import ReviewEventDetectionCard from "../../components/dashboard/ReviewEventDetectionCard";
 import AspectMentionShareChart from "../../components/dashboard/AspectMentionShareChart";
 import { Link } from "react-router-dom";
-import SentimentChart from "../../components/dashboard/SentimentChart";
+import ReviewVolumeChart from "../../components/dashboard/ReviewVolumeChart";
 import SentimentPieChart from "../../components/dashboard/SentimentPieChart";
 import VibeForecastChart from "../../components/dashboard/VibeForecastChart";
 import ReviewCard from "../../components/business_profile/ReviewCard";
@@ -74,7 +74,7 @@ function BusinessDashboard() {
     const business_health = business?.business_health || {};
     const review_activity = business?.review_activity || {};
 
-    const sentimentOverTime = business?.sentiment_over_time || {};
+    const reviewVolumeOverTime = business?.review_volume_over_time || {};
     const forecastSentiment =
         business?.forecast_vibe || business?.forecast_sentiment || {};
 
@@ -185,7 +185,7 @@ function BusinessDashboard() {
                     </div>
                 </div>
 
-                {/* SENTIMENT SECTION */}
+                {/* REVIEW VOLUME SECTION */}
                 <div className="flex flex-col xl:flex-row gap-4">
                     <div className="w-full xl:w-[35%]">
                         <SentimentPieChart
@@ -194,9 +194,8 @@ function BusinessDashboard() {
                     </div>
 
                     <div className="w-full xl:w-[65%]">
-                        <SentimentChart
-                            data={sentimentOverTime.data || []}
-                            meta={sentimentOverTime.meta || {}}
+                        <ReviewVolumeChart
+                            data={reviewVolumeOverTime}
                         />
                     </div>
                 </div>

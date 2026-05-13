@@ -34,7 +34,7 @@ async def client():
 
 @pytest.mark.asyncio
 async def test_get_dashboard_aggregates_payload(client, monkeypatch):
-	calls = {"resolved": False, "verified": False}
+	calls = {"resolved": False, "verified": False, "review_volume": []}
 
 	def _resolve_user_business_id(_current_user, _business_id):
 		calls["resolved"] = True
@@ -80,8 +80,19 @@ async def test_get_dashboard_aggregates_payload(client, monkeypatch):
 		assert "summary" in aspects
 		return {"frequency": {"service": 10}}
 
-	async def _sent_over_time(_db, _business_id, _granularity):
-		return {"data": [{"period": "d1", "avg_score": 0.5}]}
+	async def _review_volume_over_time(_db, _business_id, _granularity):
+		calls["review_volume"].append(_granularity)
+		return {
+			"data": [
+				{
+					"period": "d1",
+					"review_count": 10,
+					"is_reliable": True,
+					"confidence": "high",
+				}
+			],
+			"meta": {"is_reliable": True, "sample_size": 10, "min_required": 5},
+		}
 
 	async def _sent_distribution(_db, _business_id):
 		return {"distribution": {"positive": {"count": 9}}, "total_reviews": 12}
@@ -111,7 +122,7 @@ async def test_get_dashboard_aggregates_payload(client, monkeypatch):
 	monkeypatch.setattr(dashboard, "get_aspect_summary", _aspect_summary)
 	monkeypatch.setattr(dashboard, "get_aspect_trends", _aspect_trends)
 	monkeypatch.setattr(dashboard, "get_aspect_frequency", _aspect_frequency)
-	monkeypatch.setattr(dashboard, "get_sentiment_over_time", _sent_over_time)
+	monkeypatch.setattr(dashboard, "get_review_volume_over_time", _review_volume_over_time)
 	monkeypatch.setattr(dashboard, "get_sentiment_distribution", _sent_distribution)
 	monkeypatch.setattr(dashboard, "get_review_activity", _review_activity)
 	monkeypatch.setattr(dashboard, "compute_business_health", _compute_health)
@@ -128,6 +139,10 @@ async def test_get_dashboard_aggregates_payload(client, monkeypatch):
 	assert body["review_count"] == 12
 	assert body["business_health"]["score"] == 78
 	assert body["vibe_chart"]["7D"][0]["period"] == "daily"
+	assert body["review_volume_over_time"]["daily"]["data"][0]["review_count"] == 10
+	assert body["review_volume_over_time"]["weekly"]["data"][0]["review_count"] == 10
+	assert body["review_volume_over_time"]["monthly"]["data"][0]["review_count"] == 10
+	assert calls["review_volume"] == ["daily", "weekly", "monthly"]
 	assert body["aspect_frequency"]["frequency"]["service"] == 10
 
 
@@ -172,8 +187,8 @@ async def test_get_dashboard_uses_explicit_business_id(client, monkeypatch):
 		assert business_id == 123
 		return {"frequency": {}, "aspects": aspects}
 
-	async def _sent_over_time(_db, _business_id, _granularity):
-		return {"data": []}
+	async def _review_volume_over_time(_db, _business_id, _granularity):
+		return {"data": [], "meta": {"is_reliable": False, "sample_size": 0, "min_required": 5}}
 
 	async def _sent_distribution(_db, _business_id):
 		return {"distribution": {}, "total_reviews": 0}
@@ -202,7 +217,7 @@ async def test_get_dashboard_uses_explicit_business_id(client, monkeypatch):
 	monkeypatch.setattr(dashboard, "get_aspect_summary", _aspect_summary)
 	monkeypatch.setattr(dashboard, "get_aspect_trends", _aspect_trends)
 	monkeypatch.setattr(dashboard, "get_aspect_frequency", _aspect_frequency)
-	monkeypatch.setattr(dashboard, "get_sentiment_over_time", _sent_over_time)
+	monkeypatch.setattr(dashboard, "get_review_volume_over_time", _review_volume_over_time)
 	monkeypatch.setattr(dashboard, "get_sentiment_distribution", _sent_distribution)
 	monkeypatch.setattr(dashboard, "get_review_activity", _review_activity)
 	monkeypatch.setattr(dashboard, "compute_business_health", _compute_health)
@@ -216,4 +231,5 @@ async def test_get_dashboard_uses_explicit_business_id(client, monkeypatch):
 	assert body["profile"]["id"] == 123
 	assert body["review_count"] == 0
 	assert body["positive_drivers"] == []
+	assert set(body["review_volume_over_time"].keys()) == {"daily", "weekly", "monthly"}
 

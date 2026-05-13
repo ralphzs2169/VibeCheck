@@ -56,16 +56,20 @@ async def update_review(
     review_id: int,
     updated_review: ReviewUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    request: Request,
     current_user: User = Depends(auth_service.get_authenticated_user),
 ) -> Review:
     review = await review_service.get_review_or_404(db, review_id)
 
     validate_owner(current_user, review.user_id)
 
+    models = request.app.state.models
+
     return await review_service.update_review(
         db,
         review_id,
         updated_review,
+        models=models,
     )
 
 

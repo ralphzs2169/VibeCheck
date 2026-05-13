@@ -11,6 +11,7 @@ from backend.app.core.constants import (
         CONFIDENCE_SENTIMENT_WEIGHT,
         CONFIDENCE_VOLUME_WEIGHT,
         MIN_SPIKE_DATA_POINTS,
+    MIN_REVIEW_VOLUME_POINTS,
     MIN_REVIEW_VELOCITY_POINTS,
         Z_SCORE_SENTIMENT_THRESHOLD,
         Z_SCORE_VOLUME_THRESHOLD,
@@ -106,6 +107,49 @@ async def get_review_velocity(db: AsyncSession, business_id: int, window_days: i
         "previous_per_week": round(previous_per_week, 2),
         "change_pct": change_pct,
         "meta": reliability(total_count, MIN_REVIEW_VELOCITY_POINTS),
+    }
+
+
+async def get_review_volume_over_time(
+    db: AsyncSession,
+    business_id: int,
+    granularity: str,
+):
+    """
+    Aggregates review counts over time for a business, grouped by the specified
+    granularity (daily, weekly, monthly).
+    """
+    if granularity == "daily":
+        bucket = func.date(Review.created_at)
+    elif granularity == "weekly":
+        bucket = func.strftime("%Y-%W", Review.created_at)
+    elif granularity == "monthly":
+        bucket = func.strftime("%Y-%m", Review.created_at)
+    else:
+        raise ValueError("Invalid granularity")
+
+    stmt = (
+        select(
+            bucket.label("period"),
+            func.count(Review.id).label("review_count"),
+        )
+        .where(Review.business_id == business_id)
+        .group_by(bucket)
+        .order_by(bucket)
+    )
+
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    return {
+        "data": [
+            {
+                "period": row.period,
+                "review_count": int(row.review_count or 0),
+            }
+            for row in rows
+        ],
+        "meta": reliability(len(rows), MIN_REVIEW_VOLUME_POINTS),
     }
 
 

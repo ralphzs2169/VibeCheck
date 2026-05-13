@@ -101,7 +101,7 @@ async def test_update_review_route_validates_owner(client, monkeypatch):
 	async def _get_review_or_404(_db, _review_id):
 		return type("Review", (), {"user_id": 1})()
 
-	async def _update_review(_db, review_id, payload):
+	async def _update_review(_db, review_id, payload, models):
 		assert review_id == 12
 		assert payload.content == "Updated"
 		return _review_response(review_id=12)

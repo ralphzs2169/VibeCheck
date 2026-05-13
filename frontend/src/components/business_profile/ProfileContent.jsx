@@ -1,12 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import ReviewCard from './ReviewCard';
 import VibeSummaryCard from './VibeSummaryCard';
 
-function ProfileContent({ reviews, latestVibe }) {
+const PROFILE_REVIEWS_PAGE_SIZE = 8;
+
+function ProfileContent({ reviews, latestVibe, onEditReview, onDeleteReview }) {
   const reviewCount = reviews.length || 0;
     const [searchQuery, setSearchQuery] = useState('');
     const [aspectFilter, setAspectFilter] = useState('');
     const [sortOrder, setSortOrder] = useState('newest');
+        const [visibleCount, setVisibleCount] = useState(PROFILE_REVIEWS_PAGE_SIZE);
+    const reviewScrollRef = useRef(null);
+    const loadMoreSentinelRef = useRef(null);
 
     const aspectOptions = useMemo(() => {
         const seen = new Set();
@@ -47,6 +52,40 @@ function ProfileContent({ reviews, latestVibe }) {
 
         return list;
     }, [reviews, searchQuery, aspectFilter, sortOrder]);
+
+    useEffect(() => {
+        setVisibleCount(PROFILE_REVIEWS_PAGE_SIZE);
+    }, [searchQuery, aspectFilter, sortOrder, reviews]);
+
+    const displayedReviews = useMemo(
+        () => filteredReviews.slice(0, visibleCount),
+        [filteredReviews, visibleCount]
+    );
+
+    const canLoadMore = visibleCount < filteredReviews.length;
+
+    useEffect(() => {
+        const root = reviewScrollRef.current;
+        const sentinel = loadMoreSentinelRef.current;
+
+        if (!root || !sentinel || !canLoadMore) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting) {
+                    setVisibleCount((prev) => Math.min(prev + PROFILE_REVIEWS_PAGE_SIZE, filteredReviews.length));
+                }
+            },
+            {
+                root,
+                rootMargin: '0px 0px 180px 0px',
+                threshold: 0,
+            }
+        );
+
+        observer.observe(sentinel);
+        return () => observer.disconnect();
+    }, [canLoadMore, filteredReviews.length]);
 
   return (
     <main className="flex-1 flex flex-col overflow-hidden w-full h-full">
@@ -122,7 +161,7 @@ function ProfileContent({ reviews, latestVibe }) {
             </div>
 
             {/* Reviews list — scrolls inside the card */}
-            <div className="flex-1 overflow-y-auto hide-scrollbar divide-y divide-gray-100">
+            <div ref={reviewScrollRef} className="flex-1 overflow-y-auto hide-scrollbar divide-y divide-gray-100">
                 {filteredReviews.length === 0 ? (
                 <div className="p-12 text-center">
                     {searchQuery ? (
@@ -144,12 +183,18 @@ function ProfileContent({ reviews, latestVibe }) {
                     )}
                 </div>
                 ) : (
-                filteredReviews.map((review) => (
+                displayedReviews.map((review) => (
                     <div key={review.id} className="px-5 py-2">
-                    <ReviewCard review={review} />
+                                        <ReviewCard
+                                            review={review}
+                                            onEditReview={onEditReview}
+                                            onDeleteReview={onDeleteReview}
+                                        />
                     </div>
                 ))
                 )}
+
+                {canLoadMore && <div ref={loadMoreSentinelRef} className="h-2" aria-hidden="true" />}
             </div>
 
         </div>

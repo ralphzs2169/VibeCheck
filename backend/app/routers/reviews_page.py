@@ -16,6 +16,9 @@ router = APIRouter()
 @router.get("")
 async def get_reviews_page(
     business_id: int | None = None,
+    offset: int = 0,
+    limit: int = 20,
+    include_keywords: bool = True,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(auth_service.get_authenticated_user),
     models: MLRegistry = Depends(get_models),
@@ -31,18 +34,30 @@ async def get_reviews_page(
         current_user.id,
     )
 
-    reviews = await review_service.get_reviews_for_business(db, resolved_business_id)
-    keywords = await compute_vibe_keywords(
+    reviews, total_count = await review_service.get_reviews_for_business_paginated(
         db,
         resolved_business_id,
-        models,
-        allow_insufficient_data=True,
+        offset=offset,
+        limit=limit,
     )
+    keywords = {"positive_keywords": [], "negative_keywords": []}
+    if include_keywords:
+        keywords = await compute_vibe_keywords(
+            db,
+            resolved_business_id,
+            models,
+            allow_insufficient_data=True,
+        )
+
+    has_more = (offset + len(reviews)) < total_count
 
     return {
         "business_id": resolved_business_id,
-        "review_count": len(reviews),
+        "review_count": total_count,
         "reviews": reviews,
+        "offset": offset,
+        "limit": limit,
+        "has_more": has_more,
         "positive_keywords": keywords.get("positive_keywords", []),
         "negative_keywords": keywords.get("negative_keywords", []),
     }

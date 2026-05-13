@@ -11,8 +11,10 @@ from backend.app.core.constants import VIBE_UI_MAP
 
 from backend.app.services.analytics.health_score_analytics import compute_business_health
 from backend.app.services.analytics.sentiment_analytics import (
-    get_sentiment_over_time,
     get_sentiment_distribution
+)
+from backend.app.services.analytics.review_analytics import (
+    get_review_volume_over_time,
 )
 
 from backend.app.services.analytics.vibe_analytics import (
@@ -133,9 +135,11 @@ async def get_dashboard(
     sentiment_distribution = await get_sentiment_distribution(db, business_id)
 
     # =====================================
-    # Sentiment Over Time Line Chart
+    # Review Volume Over Time Line Chart
     # =====================================
-    sentiment_over_time = await get_sentiment_over_time(db, business_id, "daily")
+    review_volume_daily = await get_review_volume_over_time(db, business_id, "daily")
+    review_volume_weekly = await get_review_volume_over_time(db, business_id, "weekly")
+    review_volume_monthly = await get_review_volume_over_time(db, business_id, "monthly")
 
     # =====================================
     # Vibe Score Forecast with Line Chart
@@ -168,7 +172,11 @@ async def get_dashboard(
 
         "review_activity": review_activity,
 
-        "sentiment_over_time": sentiment_over_time,
+        "review_volume_over_time": {
+            "daily": review_volume_daily,
+            "weekly": review_volume_weekly,
+            "monthly": review_volume_monthly,
+        },
         "sentiment_distribution": sentiment_distribution,
 
 

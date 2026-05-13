@@ -7,6 +7,10 @@ import WaveBackground from '../components/WaveBackground';
 import ProfileSidebar from '../components/business_profile/ProfileSidebar';
 import ProfileContent from '../components/business_profile/ProfileContent';
 import SubmitReviewButton from '../components/business_profile/SubmitReviewBtn';
+import ReviewEditModal from '../components/business_profile/ReviewEditModal';
+import ReviewDeleteModal from '../components/business_profile/ReviewDeleteModal';
+import Toast from '../components/Toast';
+import { deleteReview, updateReview } from '../services/api';
 
 export default function BusinessProfile() {
   const { id } = useParams();
@@ -16,9 +20,83 @@ export default function BusinessProfile() {
   const [reviews, setReviews] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [editingReview, setEditingReview] = useState(null);
+  const [editContent, setEditContent] = useState('');
+  const [editError, setEditError] = useState('');
+  const [isSavingReview, setIsSavingReview] = useState(false);
+  const [deletingReview, setDeletingReview] = useState(null);
+  const [isDeletingReview, setIsDeletingReview] = useState(false);
 
   const handleReviewCreated = (newReview) => {
     setReviews((prevReviews) => [newReview, ...prevReviews]);
+  };
+
+  const openEditModal = (review) => {
+    setEditingReview(review);
+    setEditContent(review?.content || '');
+    setEditError('');
+  };
+
+  const closeEditModal = () => {
+    setEditingReview(null);
+    setEditContent('');
+    setEditError('');
+  };
+
+  const openDeleteModal = (review) => {
+    setDeletingReview(review);
+  };
+
+  const closeDeleteModal = () => {
+    setDeletingReview(null);
+  };
+
+  const handleUpdateReview = async (e) => {
+    e.preventDefault();
+
+    if (!editingReview) return;
+
+    const nextContent = editContent.trim();
+    if (!nextContent) {
+      setEditError('Please enter a review message.');
+      return;
+    }
+
+    try {
+      setIsSavingReview(true);
+      setEditError('');
+
+      const updated = await updateReview(editingReview.id, { content: nextContent });
+
+      setReviews((prevReviews) =>
+        prevReviews.map((review) => (review.id === updated.id ? updated : review))
+      );
+
+      setToast({ type: 'success', message: 'Review updated successfully.' });
+      closeEditModal();
+    } catch (err) {
+      setEditError(err?.response?.data?.detail || 'Unable to update review. Please try again.');
+    } finally {
+      setIsSavingReview(false);
+    }
+  };
+
+  const handleDeleteReview = async () => {
+    if (!deletingReview) return;
+
+    try {
+      setIsDeletingReview(true);
+      await deleteReview(deletingReview.id);
+
+      setReviews((prevReviews) => prevReviews.filter((review) => review.id !== deletingReview.id));
+      setToast({ type: 'success', message: 'Review deleted successfully.' });
+      closeDeleteModal();
+    } catch (err) {
+      setToast({ type: 'error', message: 'Unable to delete review. Please try again.' });
+    } finally {
+      setIsDeletingReview(false);
+    }
   };
 
   useEffect(() => {
@@ -105,6 +183,10 @@ export default function BusinessProfile() {
     <div className="min-h-[calc(100vh-64px)] bg-gray-50 relative overflow-hidden">
       <WaveBackground />
 
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+      )}
+
       <button
         onClick={() => navigate(-1)}
         className="absolute top-6 left-6 z-20 p-2 rounded-full bg-white shadow-md hover:shadow-lg hover:bg-gray-50 transition-all"
@@ -124,12 +206,34 @@ export default function BusinessProfile() {
         <ProfileContent
           reviews={reviews}
           latestVibe={latestVibe}
+          onEditReview={openEditModal}
+          onDeleteReview={openDeleteModal}
         />
       </div>
 
       <SubmitReviewButton
         businessId={business.id}
         onReviewCreated={handleReviewCreated}
+      />
+
+      <ReviewEditModal
+        review={editingReview}
+        content={editContent}
+        error={editError}
+        isSaving={isSavingReview}
+        onClose={closeEditModal}
+        onSubmit={handleUpdateReview}
+        onChange={(e) => {
+          setEditContent(e.target.value);
+          if (editError) setEditError('');
+        }}
+      />
+
+      <ReviewDeleteModal
+        review={deletingReview}
+        isDeleting={isDeletingReview}
+        onClose={closeDeleteModal}
+        onConfirm={handleDeleteReview}
       />
 
     </div>

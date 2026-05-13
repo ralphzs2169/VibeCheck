@@ -1,3 +1,7 @@
+# This module contains functions to perform Aspect-Based Sentiment Analysis (ABSA) on reviews.
+# ABSA involves identifying specific aspects (e.g. "service", "food", "ambiance") mentioned in reviews 
+# and determining the sentiment expressed towards each aspect.
+
 from __future__ import annotations
 
 import re
@@ -24,15 +28,6 @@ from backend.app.models.review import Review
 from backend.app.services.sentiment_service import analyze_sentiment
 
 
-async def get_review_aspects(db: AsyncSession, review_id: int) -> List[AspectSentiment]:
-    stmt = select(AspectSentiment).where(
-        AspectSentiment.review_id == review_id
-    )
-
-    result = await db.execute(stmt)
-    return result.scalars().all()
-
-
 # Prepare aspect keys and keywords for efficient access in ABSA functions
 ASPECT_KEYS = list(ASPECTS.keys())
 
@@ -44,12 +39,32 @@ ALL_ASPECT_KEYWORDS = {
 }
 
 
+async def get_review_aspects(db: AsyncSession, review_id: int) -> List[AspectSentiment]:
+    """
+    Retrieve aspect-sentiment records for a given review.
+    """
+    stmt = select(AspectSentiment).where(
+        AspectSentiment.review_id == review_id
+    )
+
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
 # ------------------
 # ABSA Core Logic
 # ------------------
 
-# split on commas that only splits if the clause contains a verb, to avoid over-splitting
 def smart_comma_split(clause: str) -> List[str]:
+    """
+    Splits a text clause on commas when they likely separate distinct opinion units.
+
+    Avoids splitting in cases where commas are part of natural phrasing, descriptive lists,
+    or stylistic pauses that do not represent separate semantic units.
+
+    Uses a simple heuristic (presence of common linking verbs) to decide whether the clause
+    should be split or preserved as a single unit.
+    """
     parts = [p.strip() for p in clause.split(",")]
 
     if len(parts) <= 1:
@@ -61,55 +76,58 @@ def smart_comma_split(clause: str) -> List[str]:
 
     return [clause]
 
-
-# split on "and" that only splits if multiple parts 
-# contain aspect keywords, to avoid over-splitting
 def smart_and_split(clause: str) -> List[str]:
+    """
+    Splits on "and" only when it likely separates distinct aspect-based opinions,
+    using keyword overlap and length-based thresholds to avoid over-splitting.
+    """
     parts = re.split(r"\band\b", clause, flags=re.IGNORECASE)
 
     if len(parts) <= 1:
         return [clause]
 
+    # Clean segments
     cleaned_parts = [p.strip() for p in parts if p.strip()]
 
+    # Check how many segments contain aspect keywords
     matched_parts = sum(
         1
         for part in cleaned_parts
-        # check if any aspect keywords are present in the part
         if set(re.findall(r"\b\w+\b", part.lower())) & ALL_ASPECT_KEYWORDS
     )
-    
-    # Require at least 50–60% of split parts to contain aspect-related keywords
-    # before allowing "and"-based splitting. This prevents over-splitting in
-    # generic sentences where "and" is used for listing or natural phrasing.
+
+    # Choose threshold based on sentence length
     if len(cleaned_parts) >= AND_SPLIT_LONG_SENTENCE_SIZE:
         threshold = AND_SPLIT_THRESHOLD_LONG
     else:
         threshold = AND_SPLIT_THRESHOLD_SHORT
 
-    # Split only if a significant proportion of segments are aspect-relevant.
-    # This ensures that "and" is treated as an aspect separator only when
-    # multiple meaningful opinion units are detected.
+    # Split only if enough segments are aspect-relevant
     if (matched_parts / len(cleaned_parts)) >= threshold:
-      
         return [p for p in cleaned_parts if len(p) >= MIN_SPLIT_PART_LENGTH]
 
     return [clause]
 
     
+
 def split_sentences(text: str) -> List[str]:
+    """ 
+    Splits review text into sentences and clauses using a combination of punctuation 
+    and conjunctions, while applying heuristics to avoid over-splitting and maintain aspect-sentiment integrity.
+    """
     text = re.sub(r"\s+", " ", text).strip()
 
-    # 1. split into sentences first
+    # split into sentences first
     sentences = re.split(r"(?<=[.!?])\s+", text)
 
     final_clauses = []
 
-    # 2. split each sentence into clauses
+    # split each sentence into clauses
     for s in sentences:
         s = s.strip()
         if len(s) < MIN_CLAUSE_LENGTH:
             continue
+        # apply smart comma splitting and then smart "and" splitting to each sentence
         clauses = re.split(
             r"\bbut\b|\bhowever\b|\bthough\b|\balthough\b|\byet\b",
             s,
@@ -129,20 +147,24 @@ def split_sentences(text: str) -> List[str]:
     return final_clauses
 
 
-# keyword boost to increase confidence if 
-# certain aspect keywords are present in the sentence
 def strong_match_boost(sentence, aspect) -> bool:
+    """
+    Checks if the sentence contains strong keywords related to the aspect, 
+    which can boost confidence in aspect detection even if similarity is borderline.
+    """
     keywords = ASPECT_KEYWORDS[aspect]
     return any(k in sentence.lower() for k in keywords)
 
 
-# Aspect detection function
-# uses cosine similarity to match sentences to predefined aspects
 def detect_aspects(sentence: str, models: MLRegistry) -> List[Tuple[str, float]]:
-
+    """
+    Detects relevant aspects mentioned in a sentence using cosine similarity between
+    sentence embeddings and predefined aspect embeddings, with heuristics to boost confidence for strong keyword matches.
+    """
     if models.aspect_embeddings is None:
         raise ValueError("aspect_embeddings not initialized")
 
+    # encode the sentence using the same embedding model used for aspect embeddings
     embedding = models.embedding.encode(sentence, convert_to_tensor=True)
 
     # compute cosine similarity between sentence embedding and aspect embeddings
@@ -176,6 +198,11 @@ async def run_absa_for_review(
     review: Review,
     models: MLRegistry
 ) -> List[AspectSentiment]:
+    """
+    Runs ABSA on a single review by splitting it into sentences and clauses,
+    detecting aspects for each clause, and analyzing sentiment for each aspect-clause pair.
+    Saves the aspect-sentiment records to the database and returns them as a list.
+    """
 
     if review.id is None:
         await db.flush()
@@ -185,9 +212,7 @@ async def run_absa_for_review(
 
     seen_aspects = set() 
 
-    # For each sentence, detect relevant aspects first, then compute
-    # aspect-specific sentiment for each detected aspect.
-    # Each record represents an (aspect, sentence) pair with its own sentiment score.
+    # iterate through each sentence/clause and perform aspect detection and sentiment analysis
     for sentence in sentences:
 
         detected_aspects = detect_aspects(sentence, models)
@@ -229,5 +254,4 @@ async def run_absa_for_review(
             db.add(record)
             results.append(record)
 
-    await db.commit()
     return results

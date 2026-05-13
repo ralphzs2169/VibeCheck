@@ -233,8 +233,10 @@ async def compute_vibe_summary(
     reviews_text = [content for content, _ in reviews_with_scores] 
 
     # Extract and classify keywords from the aggregated review text
-    keywords = extract_keywords(reviews_text, models)
-    positive_keywords, negative_keywords = classify_keywords(keywords, models)
+    positive_keywords, negative_keywords, keywords = _extract_classified_keywords(
+        reviews_text,
+        models,
+    )
 
     # Build a concise summary string (optionally enhanced via LLM)
     summary = build_summary(
@@ -286,6 +288,7 @@ async def compute_vibe_keywords(
     models: MLRegistry,
     as_of_date: datetime.datetime | None = None,
     allow_insufficient_data: bool = False,
+    reviews_with_scores: list[tuple[str, float]] | None = None,
 ) -> dict:
     """
     Extract only the top positive and negative keywords for a business.
@@ -294,7 +297,9 @@ async def compute_vibe_keywords(
     needs keyword signals and does not want vibe scoring, labels, or prose.
     """
 
-    reviews_with_scores = await get_reviews_with_scores(db, business_id, as_of_date)
+    if reviews_with_scores is None:
+        reviews_with_scores = await get_reviews_with_scores(db, business_id, as_of_date)
+
     review_count = len(reviews_with_scores)
 
     if not allow_insufficient_data and review_count < MINIMUM_REVIEW_COUNT:
@@ -321,8 +326,10 @@ async def compute_vibe_keywords(
         }
 
     reviews_text = [content for content, _ in reviews_with_scores]
-    keywords = extract_keywords(reviews_text, models)
-    positive_keywords, negative_keywords = classify_keywords(keywords, models)
+    positive_keywords, negative_keywords, _ = _extract_classified_keywords(
+        reviews_text,
+        models,
+    )
 
     return {
         "status": "ok",
@@ -331,3 +338,12 @@ async def compute_vibe_keywords(
         "positive_keywords": positive_keywords,
         "negative_keywords": negative_keywords,
     }
+
+
+def _extract_classified_keywords(
+    reviews_text: list[str],
+    models: MLRegistry,
+) -> tuple[list[str], list[str], list[str]]:
+    keywords = extract_keywords(reviews_text, models)
+    positive_keywords, negative_keywords = classify_keywords(keywords, models)
+    return positive_keywords, negative_keywords, keywords

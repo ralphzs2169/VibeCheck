@@ -1,16 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getBusinessReviewsPage } from "../../services/api";
 import ReviewCard from "../../components/business_profile/ReviewCard";
 import {
   Search,
   Filter,
-  SlidersHorizontal,
   ChevronDown,
-  Star,
   Smile,
-  Frown
+  Frown,
 } from "lucide-react";
 import Loader from "../../components/Loader";
+
+const PAGE_SIZE = 15;
 
 // ─── Small helpers ────────────────────────────────────────────────────────────
 
@@ -48,18 +48,47 @@ function SelectField({ value, onChange, children }) {
 
 function BusinessReviews() {
   const [business, setBusiness] = useState(null);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
 
   const [query, setQuery] = useState("");
   const [aspectFilter, setAspectFilter] = useState("");
   const [sortOrder, setSortOrder] = useState("newest");
+  const scrollContainerRef = useRef(null);
+  const loadMoreSentinelRef = useRef(null);
+
+  const fetchPage = async ({ offset, append, includeKeywords }) => {
+    const pageData = await getBusinessReviewsPage({
+      offset,
+      limit: PAGE_SIZE,
+      includeKeywords,
+    });
+
+    setBusiness((prev) => ({
+      ...(prev || {}),
+      business_id: pageData.business_id,
+      review_count: pageData.review_count,
+      positive_keywords:
+        includeKeywords || !prev?.positive_keywords
+          ? pageData.positive_keywords || []
+          : prev.positive_keywords,
+      negative_keywords:
+        includeKeywords || !prev?.negative_keywords
+          ? pageData.negative_keywords || []
+          : prev.negative_keywords,
+    }));
+
+    setHasMore(Boolean(pageData.has_more));
+    setReviews((prev) => (append ? [...prev, ...(pageData.reviews || [])] : pageData.reviews || []));
+  };
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const pageData = await getBusinessReviewsPage();
-        setBusiness(pageData);
+        await fetchPage({ offset: 0, append: false, includeKeywords: true });
       } catch (err) {
         setError(err.message || "Failed to load reviews page");
       } finally {
@@ -68,8 +97,6 @@ function BusinessReviews() {
     };
     fetchData();
   }, []);
-
-  const reviews = business?.reviews || [];
 
   const aspectOptions = useMemo(() => {
     const seen = new Set();
@@ -127,6 +154,54 @@ function BusinessReviews() {
 
     return list;
   }, [reviews, query, aspectFilter, sortOrder]);
+
+  const handleLoadMore = async () => {
+    if (!hasMore || loadingMore) return;
+
+    try {
+      setLoadingMore(true);
+      await fetchPage({
+        offset: reviews.length,
+        append: true,
+        includeKeywords: false,
+      });
+    } catch (err) {
+      setError(err.message || "Failed to load more reviews");
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  useEffect(() => {
+    const root = scrollContainerRef.current;
+    const sentinel = loadMoreSentinelRef.current;
+
+    if (!root || !sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (
+          entry.isIntersecting &&
+          hasMore &&
+          !loadingMore &&
+          !query &&
+          !aspectFilter
+        ) {
+          handleLoadMore();
+        }
+      },
+      {
+        root,
+        rootMargin: "0px 0px 180px 0px",
+        threshold: 0,
+      }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, query, aspectFilter, reviews.length]);
+
 
   // ── Loading ──
   if (loading) {
@@ -268,7 +343,7 @@ function BusinessReviews() {
               </div>
 
               {/* RESULTS - SCROLLABLE */}
-              <div className="flex-1 overflow-y-auto min-h-0">
+              <div ref={scrollContainerRef} className="flex-1 overflow-y-auto min-h-0">
                 {filteredReviews.length === 0 ? (
                   <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
                     <Filter className="w-6 h-6 text-gray-200 mx-auto mb-2" />
@@ -281,13 +356,23 @@ function BusinessReviews() {
                         key={r.id}
                         className="bg-white rounded-2xl border border-gray-100 shadow-sm"
                       >
-                        <ReviewCard review={r} />
+                        <ReviewCard review={r} hideOwnerActions />
                       </div>
                     ))}
+
+                    {!query && !aspectFilter && hasMore && (
+                      <div ref={loadMoreSentinelRef} className="h-2" aria-hidden="true" />
+                    )}
+
+                    {loadingMore && (
+                      <div className="py-4 flex items-center justify-center gap-2 text-sm text-gray-500">
+                        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-gray-200 border-t-[#004687]" />
+                        Loading more reviews...
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-
             </div>
           </div>
         </div>

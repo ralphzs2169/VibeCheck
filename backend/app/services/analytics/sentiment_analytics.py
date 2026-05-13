@@ -4,6 +4,9 @@
 import numpy as np
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from collections import defaultdict, deque
+
+from backend.app.models.aspect_sentiment import AspectSentiment
 
 from backend.app.core.constants import (
     MIN_SENTIMENT_DISTRIBUTION_REVIEWS,
@@ -39,31 +42,146 @@ async def get_sentiment_over_time(
     else:
         raise ValueError("Invalid granularity")
 
-    # Aggregate average sentiment score and count of reviews in each time bucket
+    # ---------------------------
+    # Strategy
+    # 1. Aggregate aspect-level sentiment per bucket using weighted averages
+    #    (weights = sentiment_confidence * aspect_confidence)
+    # 2. Compute bucket-level overall weighted average from aspect totals
+    # 3. Require a minimum number of review points per bucket before treating it as reliable
+    # 4. Apply a simple shrinkage toward the global mean for small buckets
+    # 5. Optionally apply a rolling mean (3 buckets) to smooth volatility
+    # ---------------------------
+
+    # Aggregation SQL: per-bucket, per-aspect weighted sums
     stmt = (
         select(
             bucket.label("period"),
-            func.avg(Review.sentiment_score).label("avg_score"),
-            func.count(Review.id).label("count"),
+            AspectSentiment.aspect.label("aspect"),
+            func.sum(AspectSentiment.sentiment_score * (AspectSentiment.sentiment_confidence * AspectSentiment.aspect_confidence)).label("weighted_sum"),
+            func.sum((AspectSentiment.sentiment_confidence * AspectSentiment.aspect_confidence)).label("weight_sum"),
+            func.count(AspectSentiment.id).label("count")
         )
+        .join(Review, AspectSentiment.review_id == Review.id)
         .where(Review.business_id == business_id)
-        .group_by("period")
+        .group_by("period", "aspect")
         .order_by("period")
     )
 
     result = await db.execute(stmt)
     rows = result.all()
 
+    # Organize results by period
+    periods = []
+    period_aspects = defaultdict(list)  # period -> list of aspect dicts
+    global_aspect_totals = defaultdict(lambda: {"weighted_sum": 0.0, "weight_sum": 0.0, "count": 0})
+
+    for row in rows:
+        period = row.period
+        aspect = row.aspect
+        wsum = float(row.weighted_sum or 0.0)
+        wsum_w = float(row.weight_sum or 0.0)
+        cnt = int(row.count or 0)
+
+        if period not in period_aspects:
+            periods.append(period)
+
+        period_aspects[period].append({
+            "aspect": aspect,
+            "weighted_sum": wsum,
+            "weight_sum": wsum_w,
+            "count": cnt,
+        })
+
+        gat = global_aspect_totals[aspect]
+        gat["weighted_sum"] += wsum
+        gat["weight_sum"] += wsum_w
+        gat["count"] += cnt
+
+    # Compute global means per aspect for shrinkage
+    global_aspect_mean = {}
+    for aspect, totals in global_aspect_totals.items():
+        if totals["weight_sum"] > 0:
+            global_aspect_mean[aspect] = totals["weighted_sum"] / totals["weight_sum"]
+        else:
+            global_aspect_mean[aspect] = 0.0
+
+    # Parameters
+    bucket_min_reviews = max(1, MIN_SENTIMENT_TIMESERIES_POINTS // 2)  # require at least half of configured points
+    shrinkage_k = 5.0  # pseudo-count for shrinkage; higher -> stronger pull to global mean
+    rolling_window = 3
+
+    # Build ordered list of buckets with computed values
+    ordered_periods = sorted(periods)
+    bucket_series = []
+
+    for period in ordered_periods:
+        aspects_list = period_aspects.get(period, [])
+
+        # compute per-aspect averages and total weight
+        aspect_outputs = []
+        total_weighted = 0.0
+        total_weight = 0.0
+        total_count = 0
+
+        for a in aspects_list:
+            weight_sum = a["weight_sum"]
+            if weight_sum > 0:
+                raw_avg = a["weighted_sum"] / weight_sum
+            else:
+                raw_avg = 0.0
+
+            # shrink toward global mean for this aspect
+            global_mean = global_aspect_mean.get(a["aspect"], 0.0)
+            n = a["count"]
+            shrunk = (n / (n + shrinkage_k)) * raw_avg + (shrinkage_k / (n + shrinkage_k)) * global_mean
+
+            aspect_outputs.append({
+                "aspect": a["aspect"],
+                "avg_score": float(shrunk),
+                "count": a["count"],
+                "weight_sum": float(weight_sum),
+            })
+
+            total_weighted += shrunk * (a["weight_sum"] or 0)
+            total_weight += (a["weight_sum"] or 0)
+            total_count += a["count"]
+
+        # overall bucket score (weighted by aspect weight sums)
+        if total_weight > 0:
+            bucket_avg = total_weighted / total_weight
+        else:
+            bucket_avg = 0.0
+
+        is_reliable = total_count >= bucket_min_reviews
+
+        bucket_series.append({
+            "period": period,
+            "avg_score": float(bucket_avg),
+            "review_count_per_period": total_count,
+            "is_reliable": is_reliable,
+            "aspects": aspect_outputs,
+        })
+
+    # Apply optional rolling mean smoothing to overall avg_score
+    smoothed = []
+    dq = deque()
+    for b in bucket_series:
+        dq.append(b["avg_score"])
+        if len(dq) > rolling_window:
+            dq.popleft()
+        smoothed_avg = float(sum(dq) / len(dq))
+        smoothed.append({**b, "smoothed_avg_score": smoothed_avg})
+
+    # Mark low-confidence buckets (insufficient data) – if not reliable we set avg_score to None or keep but flag
+    for b in smoothed:
+        if not b["is_reliable"]:
+            b["confidence"] = "low"
+        else:
+            b["confidence"] = "high"
+
     return {
-        "data": [
-            {
-                "period": row.period,
-                "avg_score": float(row.avg_score) if row.avg_score is not None else 0,
-                "review_count_per_period": row.count, # count of reviews in each period
-            }
-            for row in rows
-        ],
-        "meta": reliability(len(rows), MIN_SENTIMENT_TIMESERIES_POINTS)
+        "data": smoothed,
+        "meta": reliability(len(smoothed), MIN_SENTIMENT_TIMESERIES_POINTS)
     }
 
 
@@ -209,4 +327,3 @@ async def get_sentiment_volatility(db: AsyncSession, business_id: int):
             MIN_SENTIMENT_VOLATILITY_POINTS
         )
     }
-

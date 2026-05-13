@@ -147,13 +147,22 @@ async def test_get_sentiment_over_time_daily_granularity(session_factory):
     assert "meta" in result
     assert len(result["data"]) >= 3  # At least 3 days
     
-    # Verify each time bucket has period, avg_score, review_count_per_period
+    # Verify each time bucket has the new chart-ready sentiment ratios
     for item in result["data"]:
         assert "period" in item
-        assert "avg_score" in item
+        assert "positive_ratio" in item
+        assert "negative_ratio" in item
+        assert "positive_count" in item
+        assert "negative_count" in item
         assert "review_count_per_period" in item
-        assert -1.0 <= item["avg_score"] <= 1.0
+        assert "is_reliable" in item
+        assert "confidence" in item
+        assert item["confidence"] in {"high", "low"}
         assert item["review_count_per_period"] > 0
+        assert item["positive_count"] + item["negative_count"] == item["review_count_per_period"]
+        if item["review_count_per_period"] > 0:
+            total_ratio = item["positive_ratio"] + item["negative_ratio"]
+            assert round(total_ratio, 2) == 100.0
 
 
 @pytest.mark.asyncio
@@ -176,6 +185,10 @@ async def test_get_sentiment_over_time_weekly_granularity(session_factory):
 
     assert "data" in result
     assert len(result["data"]) >= 2  # At least 2 weeks
+    for item in result["data"]:
+        assert "positive_ratio" in item
+        assert "negative_ratio" in item
+        assert item["confidence"] in {"high", "low"}
 
 
 @pytest.mark.asyncio
@@ -197,6 +210,10 @@ async def test_get_sentiment_over_time_monthly_granularity(session_factory):
 
     assert "data" in result
     assert len(result["data"]) >= 2  # At least 2 months
+    for item in result["data"]:
+        assert "positive_ratio" in item
+        assert "negative_ratio" in item
+        assert item["confidence"] in {"high", "low"}
 
 
 @pytest.mark.asyncio

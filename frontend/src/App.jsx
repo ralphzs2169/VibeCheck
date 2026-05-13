@@ -14,6 +14,8 @@ import RoleProtectedRoute from "./components/security/RoleProtectedRoute.jsx";
 import GuestRoute from "./components/security/GuestRoute.jsx";
 import BusinessAnalytics from "./pages/business_owner/BusinessAnalytics.jsx";
 import ResortsDiscovery from "./pages/ResortsDiscovery";
+import NotFound from "./pages/NotFound";
+import ServerError from "./pages/ServerError";
 
 
 function ScrollManager() {
@@ -43,6 +45,9 @@ function App() {
       <Navbar />
 
       <Routes>
+        {/* Error pages - checked first, bypass all protection */}
+        <Route path="/500" element={<ServerError />} />
+
         <Route 
           path="/" element={
            <RoleProtectedRoute notAllowedRoles={["owner"]} requireAuth={false}>
@@ -99,6 +104,9 @@ function App() {
           <Route path="reviews" element={<BusinessReviews />} />
           <Route path="analytics" element={<BusinessAnalytics />} />
         </Route>
+
+        {/* Catch-all route for 404 */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
 
 
